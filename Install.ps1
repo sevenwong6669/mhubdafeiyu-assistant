@@ -18,6 +18,7 @@ $sync = Join-Path $root 'harness-mhub-sync'
 $utf8 = [Text.UTF8Encoding]::new($false)
 $installBackup = $null
 $savedFiles = @{}
+$writtenFiles = [Collections.Generic.List[string]]::new()
 $createdModules = [Collections.Generic.List[string]]::new()
 
 if ($env:OS -ne 'Windows_NT' -or -not [Environment]::Is64BitOperatingSystem) { throw 'Windows x64 is required.' }
@@ -59,13 +60,18 @@ function Write-LocalText([string]$Path, [string]$Content) {
         [IO.File]::WriteAllText((Join-Path $script:installBackup 'files.json'), ($savedFiles | ConvertTo-Json -Depth 5), $utf8)
     }
     $temp = "$Path.install-" + [guid]::NewGuid().ToString('N') + '.tmp'
-    [IO.File]::WriteAllText($temp, $Content, $utf8)
-    if ([IO.File]::Exists($Path)) {
-        $previous = "$temp.previous"
-        [IO.File]::Replace($temp, $Path, $previous)
+    $previous = "$temp.previous"
+    try {
+        [IO.File]::WriteAllText($temp, $Content, $utf8)
+        if ($savedFiles[$Path].existed -or $writtenFiles.Contains($Path)) {
+            [IO.File]::Replace($temp, $Path, $previous)
+        } else {
+            [IO.File]::Move($temp, $Path)
+        }
+        $writtenFiles.Add($Path)
         [IO.File]::Delete($previous)
-    } else {
-        [IO.File]::Move($temp, $Path)
+    } finally {
+        [IO.File]::Delete($temp)
     }
 }
 
@@ -91,16 +97,24 @@ function Prepare-DesktopRuntime([string]$Directory) {
 }
 
 function Undo-Installation {
-    foreach ($entry in $savedFiles.GetEnumerator()) {
-        if ($entry.Value.existed) { Copy-Item -LiteralPath $entry.Value.backup -Destination $entry.Key -Force }
-        elseif ([IO.File]::Exists($entry.Key)) { Remove-Item -LiteralPath $entry.Key }
+    $rollbackErrors = [Collections.Generic.List[string]]::new()
+    for ($i = $writtenFiles.Count - 1; $i -ge 0; $i--) {
+        $path = $writtenFiles[$i]
+        $snapshot = $savedFiles[$path]
+        try {
+            if ($snapshot.existed) { Copy-Item -LiteralPath $snapshot.backup -Destination $path -Force }
+            elseif ([IO.File]::Exists($path)) { Remove-Item -LiteralPath $path }
+        } catch { $rollbackErrors.Add("${path}: $($_.Exception.Message)") }
     }
     # Only the exact module directories created in this transaction are removed.
     $allowed = @($module,$voiceModule,$auraModule) | ForEach-Object { [IO.Path]::GetFullPath($_) }
     foreach ($directory in $createdModules) {
-        if ($directory -notin $allowed) { throw 'Rollback target identity changed; retain the installation backup for review.' }
-        if (Test-Path -LiteralPath $directory) { Remove-Item -LiteralPath $directory -Recurse -Force }
+        try {
+            if ($directory -notin $allowed) { throw 'Rollback target identity changed.' }
+            if (Test-Path -LiteralPath $directory) { Remove-Item -LiteralPath $directory -Recurse -Force }
+        } catch { $rollbackErrors.Add("${directory}: $($_.Exception.Message)") }
     }
+    if ($rollbackErrors.Count) { throw ($rollbackErrors -join [Environment]::NewLine) }
 }
 
 Test-PackageIntegrity
@@ -259,7 +273,9 @@ $null = New-Item -ItemType Directory -Force -Path $stateDir
 Write-LocalText $recordFile ($record | ConvertTo-Json)
 } catch {
     $failure = $_
-    try { Undo-Installation } catch { throw "Installation failed and rollback needs review. Keep the install-backup directory. $($_.Exception.Message)" }
+    try { Undo-Installation } catch {
+        throw "Installation failed: $($failure.Exception.Message)`nRollback needs review. Keep the install-backup directory.`n$($_.Exception.Message)"
+    }
     throw $failure
 }
 'Installed. Run Start.ps1, then open http://127.0.0.1:18782/api/mhub-community/panel'

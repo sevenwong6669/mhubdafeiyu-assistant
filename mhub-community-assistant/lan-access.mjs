@@ -4,9 +4,6 @@ import {isIPv4} from 'node:net';
 import {networkInterfaces} from 'node:os';
 
 const COOKIE='dafeiyu_lan_session',LIFETIME=7*24*60*60;
-// These requests only refresh information. Keep writes and unknown routes
-// behind LAN authentication, independently of the panel's own token.
-const anonymousPost=new Set(['/api/mhub-community/devices/refresh']);
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const equal=(a,b)=>{if(typeof a!=='string'||typeof b!=='string')return false;const x=Buffer.from(a),y=Buffer.from(b);return x.length===y.length&&timingSafeEqual(x,y);};
 const ipv4=value=>value.split('.').reduce((a,n)=>(a*256+Number(n))>>>0,0);
@@ -24,7 +21,8 @@ export function readLanConfig(file){
  let value;try{value=JSON.parse(fs.readFileSync(file,'utf8').replace(/^\uFEFF/,''));}catch(e){if(e.code==='ENOENT')return null;throw Error('局域网配置无法读取，已保留本机入口。');}
  if(value.enabled!==true)return null;
  if(!privateAddress(value.address)||!Number.isInteger(value.prefixLength)||value.prefixLength<8||value.prefixLength>30||value.requireAuth!==undefined&&typeof value.requireAuth!=='boolean'||!/^[a-f0-9]{64}$/.test(value.keyHash??'')||!/^[a-f0-9]{64}$/.test(value.sessionSecret??''))throw Error('局域网配置无效，已保留本机入口。');
- return value;
+ // Keep legacy settings readable and reuse the saved access key.
+ return {...value,requireAuth:true};
 }
 const headers={'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer'};
 const json=(error,status)=>Response.json({error},{status,headers});
@@ -43,17 +41,6 @@ export function createLanAccess(config,{port=18782,clock=Date.now}={}){
   const bearer=request.headers.get('authorization')?.match(/^Bearer (\S+)$/i)?.[1];
   const cookie=request.headers.get('cookie')?.split(';').map(x=>x.trim()).find(x=>x.startsWith(COOKIE+'='))?.slice(COOKIE.length+1);
   const authenticated=keyMatches(bearer)||sessionMatches(cookie);
-  if(config.requireAuth===false&&url.pathname!=='/lan/login'){
-   if(!authenticated){
-    // Anonymous access is limited to the page shell and static assets.
-    // State and admin endpoints always require LAN authentication.
-    if(['GET','HEAD'].includes(request.method)
-      &&(!url.pathname.startsWith('/api/mhub-community/')||url.pathname==='/api/mhub-community/panel'))return null;
-    if(request.method==='POST'&&anonymousPost.has(url.pathname))return null;
-    return json('此操作需要先登录局域网后台（/lan/login）。',403);
-   }
-   return null;
-  }
   if(url.pathname==='/lan/login'&&request.method==='POST'){
    const now=clock(),last=attempts.get(peer);if(last&&last.until>now&&last.count>=5)return login('尝试次数较多，请一分钟后重试。',429);
    if(!/^application\/x-www-form-urlencoded(?:;|$)/i.test(request.headers.get('content-type')??''))return json('请求格式不正确。',415);

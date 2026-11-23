@@ -7,8 +7,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: "22"}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
       - name: verify checksum manifest
         shell: bash
         run: sha256sum -c SHA256SUMS.txt --quiet
       - working-directory: mhub-community-assistant
         run: node --test --test-concurrency=4 tests/*.test.mjs
+      - name: install and uninstall (Windows PowerShell 5.1)
+        shell: powershell
+        run: ./tests/install-uninstall.test.ps1 -PythonPath (Get-Command python.exe).Source
+      - name: install and uninstall (PowerShell 7)
+        shell: pwsh
+        run: ./tests/install-uninstall.test.ps1 -PythonPath (Get-Command python.exe).Source
