@@ -1,4 +1,3 @@
-# Runtime state and user data — never commit these
 **/node_modules/
 **/__pycache__/
 **/.venv/
@@ -12,7 +11,7 @@
 **/*.log
 **/*.tmp
 **/backup-image.bin
+**/state/
 *.dpapi
 .env
 .env.*
-**/state/

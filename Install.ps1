@@ -244,6 +244,17 @@ if ($LinkAuraBot) {
     try { Undo-Installation } catch { throw "Installation failed and rollback needs review. Keep the install-backup directory. $($_.Exception.Message)" }
     throw $failure
 }
+$record = [ordered]@{
+    installedAt = (Get-Date).ToUniversalTime().ToString('o')
+    root = $root
+    dshRoot = $DshRoot
+    hosts = @()
+}
+if ($LinkHarness) { $record.hosts += 'harness' }
+if ($LinkAuraBot) { $record.hosts += 'aurabot' }
+$stateDir = Join-Path $panel 'state'
+$null = New-Item -ItemType Directory -Force -Path $stateDir
+[IO.File]::WriteAllText((Join-Path $stateDir 'install-record.json'), ($record | ConvertTo-Json), $utf8)
 'Installed. Run Start.ps1, then open http://127.0.0.1:18782/api/mhub-community/panel'
 if ($installBackup) { "Installation backup: $installBackup" }
 'No recording, calls, automatic startup, LAN exposure or hardware configuration writes were started by this installer.'

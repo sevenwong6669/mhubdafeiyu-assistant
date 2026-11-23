@@ -57,7 +57,7 @@ export function startPanel(){
     lan.running=false;lan.error='局域网入口未启动：'+error.code;lan.nextRetryAt=Date.now()+10000;record();
     if(!closing)retryTimer=setTimeout(connectLan,10000);
    });
-   remote.listen(port,config.address,()=>{lan.running=true;lan.error=null;lan.nextRetryAt=null;record();console.log('LAN panel: http://'+config.address+':'+port);});
+   remote.listen(port,config.address,()=>{lan.running=true;lan.error=null;lan.nextRetryAt=null;record();console.log('LAN panel: http://'+config.address+':'+port);console.warn('LAN panel uses plaintext HTTP; keep it to a trusted network or an encrypted tunnel.'+(config.requireAuth===false?' WARNING: anonymous read access is enabled.':''));});
   }catch(error){lan.error=error.message;record();if(!closing)retryTimer=setTimeout(connectLan,10000);}
  };
  local.listen(port,'127.0.0.1',()=>{
