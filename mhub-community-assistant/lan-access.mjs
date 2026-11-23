@@ -44,9 +44,14 @@ export function createLanAccess(config,{port=18782,clock=Date.now}={}){
   const cookie=request.headers.get('cookie')?.split(';').map(x=>x.trim()).find(x=>x.startsWith(COOKIE+'='))?.slice(COOKIE.length+1);
   const authenticated=keyMatches(bearer)||sessionMatches(cookie);
   if(config.requireAuth===false&&url.pathname!=='/lan/login'){
-   if(!authenticated&&!['GET','HEAD'].includes(request.method)
-     &&!(request.method==='POST'&&anonymousPost.has(url.pathname)))
+   if(!authenticated){
+    // Anonymous access is limited to the page shell and static assets.
+    // State and admin endpoints always require LAN authentication.
+    if(['GET','HEAD'].includes(request.method)
+      &&(!url.pathname.startsWith('/api/mhub-community/')||url.pathname==='/api/mhub-community/panel'))return null;
+    if(request.method==='POST'&&anonymousPost.has(url.pathname))return null;
     return json('此操作需要先登录局域网后台（/lan/login）。',403);
+   }
    return null;
   }
   if(url.pathname==='/lan/login'&&request.method==='POST'){

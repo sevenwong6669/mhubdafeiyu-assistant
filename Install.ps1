@@ -239,11 +239,6 @@ if ($LinkAuraBot) {
     Copy-Item -LiteralPath (Join-Path $panel 'aurabot-panel.js') -Destination (Join-Path $auraModule 'panel.js')
     Write-LocalText (Join-Path $auraModule 'index.mjs') "export {default} from $uri;`n"
 }
-} catch {
-    $failure = $_
-    try { Undo-Installation } catch { throw "Installation failed and rollback needs review. Keep the install-backup directory. $($_.Exception.Message)" }
-    throw $failure
-}
 $record = [ordered]@{
     installedAt = (Get-Date).ToUniversalTime().ToString('o')
     root = $root
@@ -253,8 +248,20 @@ $record = [ordered]@{
 if ($LinkHarness) { $record.hosts += 'harness' }
 if ($LinkAuraBot) { $record.hosts += 'aurabot' }
 $stateDir = Join-Path $panel 'state'
+$recordFile = Join-Path $stateDir 'install-record.json'
+if (Test-Path -LiteralPath $recordFile -PathType Leaf) {
+    try {
+        $prior = Get-Content -LiteralPath $recordFile -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($prior.hosts) { $record.hosts = @(@($prior.hosts) + @($record.hosts) | Select-Object -Unique) }
+    } catch {}
+}
 $null = New-Item -ItemType Directory -Force -Path $stateDir
-[IO.File]::WriteAllText((Join-Path $stateDir 'install-record.json'), ($record | ConvertTo-Json), $utf8)
+Write-LocalText $recordFile ($record | ConvertTo-Json)
+} catch {
+    $failure = $_
+    try { Undo-Installation } catch { throw "Installation failed and rollback needs review. Keep the install-backup directory. $($_.Exception.Message)" }
+    throw $failure
+}
 'Installed. Run Start.ps1, then open http://127.0.0.1:18782/api/mhub-community/panel'
 if ($installBackup) { "Installation backup: $installBackup" }
 'No recording, calls, automatic startup, LAN exposure or hardware configuration writes were started by this installer.'
