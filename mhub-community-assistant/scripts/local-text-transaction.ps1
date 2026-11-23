@@ -54,11 +54,48 @@ function Write-CheckedText($Change) {
 
 function Undo-CheckedText($Change) {
     if (!$Change.written) { return }
-    Assert-LocalTextSnapshot $Change.path $Change.written
-    if ($Change.expected.existed) {
-        Copy-Item -LiteralPath $Change.recoveryCopy -Destination $Change.path -Force
-        if ($Change.recoveryCopy -ne $Change.backup) { [IO.File]::Delete($Change.recoveryCopy) }
-    } else {
-        [IO.File]::Delete($Change.path)
+    $path = $Change.path
+    $temporary = "$path.rollback-$([guid]::NewGuid().ToString('N')).tmp"
+    $displaced = "$temporary.conflict"
+    try {
+        $restored = $null
+        if ($Change.expected.existed) {
+            [IO.File]::Copy($Change.recoveryCopy, $temporary)
+            $restored = Read-LocalTextSnapshot $temporary
+        }
+        Assert-LocalTextSnapshot $path $Change.written
+        if ($restored) {
+            [IO.File]::Replace($temporary, $path, $displaced)
+        } else {
+            [IO.File]::Move($path, $displaced)
+        }
+        $actual = Read-LocalTextSnapshot $displaced
+        if ($actual.digest -cne $Change.written.digest) {
+            Restore-RollbackConflict $path $displaced $restored
+        }
+        [IO.File]::Delete($displaced)
+        if ($restored -and $Change.recoveryCopy -ne $Change.backup) { [IO.File]::Delete($Change.recoveryCopy) }
+    } finally { [IO.File]::Delete($temporary) }
+}
+
+function Restore-RollbackConflict([string]$Path, [string]$Displaced, $Restored) {
+    # Put the concurrent version back with a move that cannot overwrite a
+    # newer save. If another save already replaced our rollback, keep both.
+    $latest = "$Displaced.latest"
+    $preserve = $Displaced
+    try {
+        if ($Restored) {
+            [IO.File]::Move($Path, $latest)
+            if ((Read-LocalTextSnapshot $latest).digest -cne $Restored.digest) { $preserve = $latest }
+        }
+        [IO.File]::Move($preserve, $Path)
+        if ($Restored -and $preserve -eq $Displaced) { [IO.File]::Delete($latest) }
+    } catch {
+        $copies = @($Displaced, $latest) | Where-Object { [IO.File]::Exists($_) }
+        throw "Rollback conflict at $Path. Review the active file and preserved copies: $($copies -join ', ')."
     }
+    if ($preserve -eq $latest) {
+        throw "Rollback conflict at $Path. The latest save is active and the earlier concurrent version was saved at $Displaced."
+    }
+    throw "Rollback conflict at $Path. The concurrent save was preserved."
 }

@@ -27,9 +27,9 @@
 3. 运行 `Install.ps1 -LinkHarness`；需要语音和桌宠时再加 `-PrepareVoice -PrepareDesktop`。
 4. 打开面板按首次引导逐项开启功能。
 
-卸载运行 `Uninstall.ps1`。脚本先等待设备联动释放控制、独立语音退出，再停止面板并解除已验证归属的宿主注册。用户设置和备份会保留。
+卸载运行 `Uninstall.ps1`。脚本先等待设备联动释放控制，并退出属于本安装的 Live2D 桌宠和独立语音，再停止面板并解除已验证归属的宿主注册。用户设置和备份会保留。
 
-如果卸载报告设备恢复未确认，请查看 `harness-mhub-sync/shutdown-pending.json` 和 `harness-mhub-sync/device-link-release.json`。在联动停止后亲自确认设备已恢复，再运行 `Uninstall.ps1 -ConfirmDeviceRestored` 继续卸载。
+如果卸载报告设备恢复未确认，请查看 `harness-mhub-sync/shutdown-pending.json` 和 `harness-mhub-sync/device-link-release.json`。损坏的记录会标明完整路径。联动停止并亲自确认设备已恢复后，可以运行 `Uninstall.ps1 -ConfirmDeviceRestored`。需要重建损坏的卸载日志时，原件会保存在脚本报告的备份路径。
 
 ## 目录与文档
 

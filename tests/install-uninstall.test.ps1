@@ -109,7 +109,7 @@ function Assert-GuardFailureStopsUninstall {
     Remove-Item -LiteralPath $guardFile
 }
 
-function Assert-DeviceWorkersExitBeforePanel([switch]$Unconfirmed) {
+function Assert-DeviceWorkersExitBeforePanel([switch]$Unconfirmed, [string]$ReleaseIssue) {
     $guardFile = Join-Path $state 'panel-guard.json'
     $instanceFile = Join-Path $state 'panel-instance.json'
     $supervisorFile = Join-Path $sync 'supervisor.pid'
@@ -166,7 +166,8 @@ function Assert-DeviceWorkersExitBeforePanel([switch]$Unconfirmed) {
             if ($Unconfirmed) {
                 [IO.File]::WriteAllText($pendingFile, (@{pid=43221; at=$now; reason='release-timeout'} | ConvertTo-Json), $utf8)
             } else {
-                [IO.File]::WriteAllText($receiptFile, (@{pid=43221; at=$now; issues=@()} | ConvertTo-Json), $utf8)
+                $issues = @($ReleaseIssue | Where-Object { $_ })
+                [IO.File]::WriteAllText($receiptFile, (@{pid=43221; at=$now; issues=$issues} | ConvertTo-Json), $utf8)
             }
             $processes.Remove(43220)
             $processes.Remove(43221)
@@ -183,7 +184,7 @@ function Assert-DeviceWorkersExitBeforePanel([switch]$Unconfirmed) {
     [IO.File]::WriteAllText($voiceFile, '43225', $utf8)
     [IO.File]::WriteAllText($guardFile, '{"pid":43222,"serverPid":0}', $utf8)
     [IO.File]::WriteAllText($instanceFile, (@{pid=43223; script=$panelScript; instanceId='fixture-panel'} | ConvertTo-Json), $utf8)
-    if ($Unconfirmed) {
+    if ($Unconfirmed -or $ReleaseIssue) {
         for ($attempt = 0; $attempt -lt 2; $attempt++) {
             $failure = $null
             try { $null = Invoke-Uninstall } catch { $failure = $_ }
@@ -192,12 +193,161 @@ function Assert-DeviceWorkersExitBeforePanel([switch]$Unconfirmed) {
             Assert-That (Test-Path -LiteralPath $index) 'Unconfirmed restoration removed the Harness module.'
         }
         Assert-That (($order -join ',') -eq 'release:sync') 'Unconfirmed restoration stopped the panel or voice service.'
-        $pendingAt = ([IO.File]::ReadAllText($pendingFile) | ConvertFrom-Json).at
+        $failedResult = if ($Unconfirmed) { $pendingFile } else { $receiptFile }
+        $pendingAt = ([IO.File]::ReadAllText($failedResult) | ConvertFrom-Json).at
         [IO.File]::WriteAllText($receiptFile, (@{pid=43221; at=$pendingAt + 1; issues=@()} | ConvertTo-Json), $utf8)
     }
     $null = Invoke-Uninstall
     Assert-That (($order -join ',') -eq 'release:sync,request:voice,release:voice,stop:43222,stop:43223') 'Uninstall did not release sync and voice before stopping the panel.'
     foreach ($file in @($guardFile, $instanceFile, $supervisorFile, $controllerFile, $voiceFile, $pendingFile, $receiptFile)) {
+        if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file }
+    }
+}
+
+function Assert-RollbackPreservesConcurrentSave([bool]$PreviouslyExisted) {
+    . (Join-Path $panel 'scripts/local-text-transaction.ps1')
+    $fixtureFile = Join-Path $testRoot 'rollback-settings.json'
+    $savedCopy = Join-Path $testRoot 'rollback-settings.original'
+    if ($PreviouslyExisted) { [IO.File]::WriteAllText($fixtureFile, '{"initial":true}', $utf8) }
+    $transaction = @{
+        path=$fixtureFile; expected=(Read-LocalTextSnapshot $fixtureFile)
+        content='{"installed":true}'; backup=$savedCopy
+    }
+    Write-CheckedText $transaction
+    $checkOriginal = ${function:Assert-LocalTextSnapshot}
+    $latestText = '{"installed":true,"concurrentSave":true}'
+    $race = @{ triggered=$false }
+    function Assert-LocalTextSnapshot([string]$Path, $Expected, [string]$Target = $Path) {
+        & $checkOriginal $Path $Expected $Target
+        if ($Path -eq $fixtureFile -and !$race.triggered) {
+            $race.triggered = $true
+            $stage = "$fixtureFile.external"
+            [IO.File]::WriteAllText($stage, $latestText, $utf8)
+            [IO.File]::Replace($stage, $fixtureFile, "$fixtureFile.external.previous")
+        }
+    }
+    $message = $null
+    try { Undo-CheckedText $transaction } catch { $message = $_.Exception.Message }
+    Assert-That ($race.triggered -and $message -like 'Rollback conflict at*') 'Rollback did not report a write after the digest check.'
+    Assert-That ([IO.File]::ReadAllText($fixtureFile) -ceq $latestText) 'Rollback lost the concurrent save.'
+    Remove-Item -LiteralPath $fixtureFile, "$fixtureFile.external.previous"
+}
+
+function Assert-OldAuraRecordUsesDiskOwnership {
+    $savedRecordText = [IO.File]::ReadAllText($record)
+    $null = [IO.Directory]::CreateDirectory($auraModule)
+    $auraEntry = Join-Path $auraModule 'index.mjs'
+    [IO.File]::WriteAllText($record, '{"hosts":["harness"]}', $utf8)
+    $auraUri = ([uri](Join-Path $panel 'aurabot-adapter.mjs')).AbsoluteUri | ConvertTo-Json -Compress
+    [IO.File]::WriteAllText($auraEntry, "export {default} from $auraUri;", $utf8)
+    $null = Invoke-Uninstall
+    Assert-That (!(Test-Path -LiteralPath $auraModule)) 'Legacy record hid a module that belongs to this install.'
+
+    Reset-HarnessRegistration
+    $null = [IO.Directory]::CreateDirectory($auraModule)
+    $foreignEntry = 'export {default} from "file:///C:/another-install/aurabot-adapter.mjs";'
+    [IO.File]::WriteAllText($auraEntry, $foreignEntry, $utf8)
+    $null = Invoke-Uninstall
+    Assert-That ([IO.File]::ReadAllText($auraEntry) -ceq $foreignEntry) 'Uninstall modified another installation''s AuraBot module.'
+    Remove-FixtureTree $auraModule
+    [IO.File]::WriteAllText($record, $savedRecordText, $utf8)
+}
+
+function Assert-DamagedDeviceRecoveryCanBeReviewed {
+    $journal = Join-Path $state 'uninstall-device-recovery.json'
+    foreach ($path in @((Join-Path $sync 'shutdown-pending.json'), (Join-Path $sync 'device-link-release.json'), $journal)) {
+        Reset-HarnessRegistration
+        $damaged = '{"truncated":'
+        [IO.File]::WriteAllText($path, $damaged, $utf8)
+        $message = $null
+        try { $null = Invoke-Uninstall } catch { $message = $_.Exception.Message }
+        Assert-That ($message -and $message.Contains($path)) 'The failure did not identify the damaged recovery file.'
+        Assert-That (Test-Path -LiteralPath $index) 'Damaged recovery record did not protect the registration.'
+        Assert-That ([IO.File]::ReadAllText($path) -ceq $damaged) 'Unconfirmed uninstall changed the damaged record.'
+        $null = & $uninstall -DshRoot $dshRoot -ConfirmDeviceRestored
+        Assert-HarnessUnlinked
+        if ($path -eq $journal) {
+            $copies = @(Get-ChildItem -LiteralPath $state -File -Filter 'uninstall-device-recovery.json.backup-*')
+            Assert-That ($copies.Count -eq 1 -and [IO.File]::ReadAllText($copies[0].FullName) -ceq $damaged) 'Confirmation lost the damaged journal bytes.'
+        } else {
+            Assert-That ([IO.File]::ReadAllText($path) -ceq $damaged) 'Confirmation rewrote the damaged device evidence.'
+            Remove-Item -LiteralPath $path
+        }
+        Remove-Item -LiteralPath $journal
+    }
+}
+
+function Assert-Live2dUninstall([ValidateSet('host','offline','rejected','foreign')][string]$Mode) {
+    Reset-HarnessRegistration
+    $liveState = Join-Path $state 'live2d'
+    $null = [IO.Directory]::CreateDirectory($liveState)
+    $desktopRoot = Join-Path $panel 'live2d-pet'
+    $paneEntry = Join-Path $panel 'scripts/start-panel.mjs'
+    $petRoot = if ($Mode -eq 'foreign') { Join-Path $testRoot 'foreign-live2d' } else { $desktopRoot }
+    $petMeta = Join-Path $liveState 'pet-process.json'
+    $hostMeta = Join-Path $liveState 'host.json'
+    $paneMeta = Join-Path $state 'panel-instance.json'
+    $processes = @{
+        43230 = [pscustomobject]@{ProcessId=43230; Name='electron.exe'; CommandLine=('"' + (Join-Path $petRoot 'node_modules/electron/dist/electron.exe') + '" "' + (Join-Path $petRoot 'app/main.js') + '"')}
+        43231 = [pscustomobject]@{ProcessId=43231; Name='node.exe'; CommandLine=('node.exe "' + $paneEntry + '"')}
+    }
+    $petWindow = [pscustomobject]@{ closed=$false }
+    $petWindow | Add-Member ScriptMethod CloseMainWindow { $this.closed=$true; return $true }
+    $actions = [Collections.Generic.List[string]]::new()
+    $fixtureToken = 'live2d-fixture-token'
+    function Get-CimInstance {
+        [CmdletBinding()]
+        param([string]$ClassName, [string]$Filter)
+        $processes.Values | Where-Object { !$Filter -or "ProcessId=$($_.ProcessId)" -eq $Filter }
+    }
+    function Get-Process {
+        [CmdletBinding()]
+        param([string]$Name, [int]$Id)
+        if ($Id -eq 43230 -and $processes.ContainsKey($Id)) { return $petWindow }
+        return $processes[$Id]
+    }
+    function Invoke-RestMethod {
+        param([string]$Uri, [int]$TimeoutSec, [int]$MaximumRedirection, [string]$Method, [string]$ContentType, [string]$Body, [hashtable]$Headers)
+        if ($Uri -eq 'http://127.0.0.1:18782/health') { return @{service='dafeiyu-panel'; pid=43231; instanceId='fixture-live2d'} }
+        Assert-That ($Uri -eq 'http://127.0.0.1:18782/api/mhub-community/live2d/stop' -and
+            $Method -eq 'Post' -and $Headers['x-pet-token'] -eq $fixtureToken) 'Uninstall did not use the verified Live2D stop endpoint.'
+        $actions.Add('quit')
+        return @{ok=($Mode -ne 'rejected')}
+    }
+    function Wait-Process {
+        [CmdletBinding()]
+        param([int[]]$Id, [int]$Timeout)
+        if ($Id -contains 43230) {
+            Assert-That ($petWindow.closed -or $actions.Contains('quit')) 'Uninstall waited without first requesting a graceful Live2D exit.'
+            $actions.Add('exited')
+            $processes.Remove(43230)
+        }
+    }
+    function Stop-Process {
+        [CmdletBinding()]
+        param([int]$Id, [switch]$Force)
+        Assert-That ($Id -eq 43231) 'Uninstall tried to force-stop a desktop process.'
+        $actions.Add('panel')
+        $processes.Remove($Id)
+    }
+    [IO.File]::WriteAllText($petMeta, '{"pid":43230}', $utf8)
+    [IO.File]::WriteAllText($paneMeta, (@{pid=43231; script=$paneEntry; instanceId='fixture-live2d'} | ConvertTo-Json), $utf8)
+    if ($Mode -ne 'offline') {
+        $metadata = @{pid=43231; token=$fixtureToken; baseUrl='http://127.0.0.1:18782'; api='/api/mhub-community/live2d'; sourcePetDir=$desktopRoot}
+        [IO.File]::WriteAllText($hostMeta, ($metadata | ConvertTo-Json), $utf8)
+    }
+    if ($Mode -eq 'rejected') {
+        $message = $null
+        try { $null = Invoke-Uninstall } catch { $message = $_.Exception.Message }
+        Assert-That ($message -like '*did not confirm shutdown*' -and ($actions -join ',') -eq 'quit') 'Uninstall continued after the Live2D host refused shutdown.'
+        Assert-That (Test-Path -LiteralPath $index) 'Unconfirmed Live2D exit did not protect the registration.'
+    } else {
+        $null = Invoke-Uninstall
+        Assert-HarnessUnlinked
+        $expected = switch ($Mode) { 'host' {'quit,exited,panel'} 'offline' {'exited,panel'} 'foreign' {'panel'} }
+        Assert-That (($actions -join ',') -eq $expected) 'Uninstall used the wrong Live2D exit path or stopped the panel prematurely.'
+    }
+    foreach ($file in @($petMeta, $hostMeta, $paneMeta)) {
         if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file }
     }
 }
@@ -440,9 +590,22 @@ try {
     Assert-DeviceWorkersExitBeforePanel -Unconfirmed
     Assert-HarnessUnlinked
     'PASS: pending device restoration blocks retries until a matching receipt arrives'
+    foreach ($issue in @('page-buttons-cleanup-error: unsubscribe failed', 'balance-native-restore-error: driver-writing')) {
+        Reset-HarnessRegistration
+        Assert-DeviceWorkersExitBeforePanel -ReleaseIssue $issue
+        Assert-HarnessUnlinked
+    }
+    'PASS: K20 listener and deferred strip issues block registration cleanup until recovery'
     Reset-HarnessRegistration
     Assert-ManualDeviceRestoreConfirmation
     'PASS: manual confirmation applies only to the reviewed device recovery record'
+    Assert-DamagedDeviceRecoveryCanBeReviewed
+    'PASS: manual confirmation preserves each damaged recovery record'
+    Reset-HarnessRegistration
+    Assert-OldAuraRecordUsesDiskOwnership
+    'PASS: old AuraBot records fall back to on-disk ownership'
+    foreach ($mode in @('host', 'offline', 'rejected', 'foreign')) { Assert-Live2dUninstall $mode }
+    'PASS: uninstall waits for owned Live2D exits and preserves unrelated processes'
     Reset-HarnessRegistration
     Assert-UninstallPreservesConcurrentHostWrites
     'PASS: uninstall preserves concurrent host changes and the module'
@@ -459,6 +622,9 @@ try {
     [IO.File]::WriteAllText($profilePatch, $originalPatch, $utf8)
     Assert-LockedRecordRollback ([IO.FileShare]::None)
     Assert-LockedRecordRollback ([IO.FileShare]::Read)
+    Assert-RollbackPreservesConcurrentSave $true
+    Assert-RollbackPreservesConcurrentSave $false
+    'PASS: rollback preserves saves arriving after the final digest check'
     Assert-InstallSettingsReadAfterDesktopPreparation
     'PASS: installation retains settings written during desktop dependency preparation'
     Assert-InstallPreservesConcurrentHostRecord

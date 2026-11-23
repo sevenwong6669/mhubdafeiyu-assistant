@@ -28,6 +28,7 @@ import {Fireworks} from './fireworks.mjs';
 import {BalanceBar,balanceView} from './balance-bar.mjs';
 import {LiveControlSettings,StableTaskState,DEFAULT_BINDINGS,TASK_STATES,validateStyle} from './control-settings.mjs';
 import {HardwareScreen} from './hardware-screen.mjs';
+import {reportReleaseStep} from './release-policy.mjs';
 import {writeModeOverride,readModeOverride,SCREEN_MODES} from './mode-override.mjs';
 import {ControllerConnection,createConnectionReporter} from './controller-connection.mjs';
 import {RecoveryGate,writeJson} from './resilience.mjs';
@@ -850,10 +851,10 @@ try{
 }finally{
   stopping=true;abort.abort();await eventTask?.catch(()=>{});
   const releaseIssues=[];
-  const reportReleaseError=(event,error)=>{releaseIssues.push(error.message);log(event,{reason:error.message});};
+  const reportReleaseError=(event,error)=>{const reason=error?.message??String(error);releaseIssues.push(event+': '+reason);log(event,{reason});};
   await mouseBindingRecovery.close();
   hotkeyProcess?.kill();voiceProcess?.kill();panelProcess?.kill();
-  await hardwareScreen.pageButtons(false).catch(()=>{});
+  await reportReleaseStep(reportReleaseError,'page-buttons-cleanup-error',()=>hardwareScreen.pageButtons(false));
   await restoreCaption().catch(error=>reportReleaseError('caption-restore-error',error));
   await nativeLights.close().catch(error=>reportReleaseError('native-light-cleanup-error',error));
   if(phoneVisual.id||phoneVisual.screen)await phoneVisual.end().catch(error=>reportReleaseError('phone-restore-error',error));
@@ -861,7 +862,7 @@ try{
   await keyboardBridge.close().catch(error=>reportReleaseError('keyboard-cleanup-error',error));
   if(fireworks.active){try{const reward=await fireworks.stop(expected);expected=reward.signature;log('fireworks-cleanup',reward);}catch(error){reportReleaseError('fireworks-cleanup-error',error);}}
   if(lightSession.active){try{const result=await lightSession.end();expected=result.signature;log('task-native-lights-restored',{at:result.at,cleanup:true});}catch(error){reportReleaseError('restore-error',error);}}
-  if(!handoff)await balanceBar.ambient.close().then(result=>{if(result?.pendingRestore)reportReleaseError('balance-native-restore-error',Error('键盘氛围灯暂未确认恢复'));}).catch(error=>reportReleaseError('balance-native-restore-error',error));
+  if(!handoff)await reportReleaseStep(reportReleaseError,'balance-native-restore-error',()=>balanceBar.ambient.close());
   try{const host=JSON.parse(await fs.readFile(new URL('pet-hotkey-status.json',ROOT),'utf8'));if(host.parent===process.pid)await fs.writeFile(new URL('pet-hotkey-status.json',ROOT),JSON.stringify({...host,ready:false,stopped:true,observedAt:Date.now()}));}catch{}
   await stopNumbers();
   if(owned&&!manual&&!handoff){try{const strip=await balanceBar.close(expected);if(strip.changed)expected=strip.signature;}catch(error){reportReleaseError('balance-strip-cleanup-error',error);}}

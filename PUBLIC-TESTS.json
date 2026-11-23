@@ -9,6 +9,7 @@
     "internal-pet-transport.test.mjs",
     "internal-community.test.mjs",
     "companion-panel.test.mjs",
+    "device-release.test.mjs",
     "lan-access.test.mjs",
     "isolated-balance-settings.test.mjs",
     "isolated-startup-recovery.test.mjs",

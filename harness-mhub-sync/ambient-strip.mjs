@@ -19,15 +19,21 @@ export async function ambientRenderer(p){
  const m=await loadMhubModule(),store=m.c3(),connected=new Set(store.connectedDeviceIds??[]);
  let candidates=(p.models??[]).flatMap(spec=>connected.has(spec.id)?[...manager.deviceStateMap.keys()].filter(d=>d.vendorId===spec.vendorId&&d.productId===spec.productId).map(device=>({device,spec})):[]);
  const previousOwner=window[key];
- if((p.action==='release'||p.enabled===false)&&previousOwner){candidates=candidates.filter(v=>v.spec.id===previousOwner.model);if(!candidates.length)return {active:!!previousOwner.active,available:false,reason:'owned-device-offline',pendingRestore:true};}
- if(candidates.length!==1)return {active:false,available:false,reason:candidates.length?'multiple-keyboards':'unsupported-keyboard'};
+ const releasing=p.action==='release'||p.enabled===false;
+ const records=p.recovery?.devices??(p.recovery?{[p.recovery.model??'Ace 75 8K']:p.recovery}:{});
+ const pendingModels=new Set(Object.entries(records).filter(([model,record])=>record?.side?.length===8&&
+  record?.palette?.length&&!record.restored&&model!==previousOwner?.model).map(([model])=>model));
+ if(previousOwner?.active)pendingModels.add(previousOwner.model);
+ const pendingRestore=releasing&&pendingModels.size>0;
+ if(pendingRestore)candidates=candidates.filter(v=>previousOwner?.active?v.spec.id===previousOwner.model:pendingModels.has(v.spec.id));
+ if(candidates.length!==1)return {active:false,available:false,reason:candidates.length?'multiple-keyboards':pendingRestore?'owned-device-offline':'unsupported-keyboard',pendingRestore};
  const {device,spec}=candidates[0],model=spec.id,count=spec.sideCount;
  const capability={available:true,model,segments:count};
  const ownership=Object.values(m).find(v=>v?.constructor?.name==='LightingOwnership');
  const syncActive=ownership.isSyncActive({id:model})||
   !!(store.masterEnabled&&store.activeScene?.devices?.some(d=>d.id===model&&d.selected));
  // Let M HUB's live output own the device without competing HID reads or writes.
- if(syncActive)return {...capability,active:false,reason:p.show===false?'game-active':'sync-takeover',syncActive};
+ if(syncActive)return {...capability,active:false,reason:p.show===false?'game-active':'sync-takeover',syncActive,pendingRestore};
  const readAndUpdate=async()=>{
  p={...p,colors:p.palettes?.[model]??p.colors};
  if(!p.enabled&&!window[key]&&!p.recovery)return {...capability,active:false,reason:'disabled'};
@@ -65,8 +71,8 @@ export async function ambientRenderer(p){
  };
  // A restarted M HUB can leave the last native custom map in firmware. Adopt it
  // only when both the mode bytes and every color still match our saved claim.
- const recovery=p.recovery?.devices?.[model]??p.recovery;
- if(!state&&(!recovery?.model?model==='Ace 75 8K':recovery.model===model)&&recovery?.profile===profile&&recovery.side?.length===8&&recovery.palette?.length===count){
+ const recovery=records[model];
+ if(!state&&!recovery?.restored&&recovery?.profile===profile&&recovery.side?.length===8&&recovery.palette?.length===count){
   const liveColors=await palette();
   const ownsSide=same(side,recovery.expected)||same(side,recovery.previousSide);
   const ownsColors=same(liveColors,recovery.colors)||same(liveColors,recovery.previousColors);
@@ -100,7 +106,11 @@ export async function ambientRenderer(p){
   if(state.sdk===sdk)await restore();state=null;delete window[key];
   return await ambientRenderer({...p,recovery:p.recovery});
  }
- if(p.action==='release'){await restore();return {...capability,active:false,reason:state?.manual?'manual-change':'disabled'};}
+ if(p.action==='release'){
+  await restore();
+  pendingModels.delete(model);
+  return {...capability,active:false,releasedModel:model,reason:pendingModels.size?'other-device-pending':state?.manual?'manual-change':'disabled',pendingRestore:pendingModels.size>0};
+ }
  if(!state?.active&&(!p.enabled||!p.show||!p.colors))return {...capability,active:false,reason:!p.enabled?'disabled':!p.show?'game-active':'balance-unavailable'};
  if(!state||p.claim&&!state.active){await prepare();return {...capability,prepared:true,backup:backup()};}
  if(p.claim)state.externalSeq=evidence?.seq??0;
@@ -158,22 +168,38 @@ export async function ambientRenderer(p){
  };
  if(typeof ownership.runPassive!=='function')return readAndUpdate();
  const result=await ownership.runPassive({id:model},readAndUpdate);
- return result?.sent===false?{...capability,active:false,reason:'driver-writing',deferred:true}:result;
+ return result?.sent===false?{...capability,active:false,reason:'driver-writing',deferred:true,pendingRestore}:result;
 }
 export class AmbientStrip{
  constructor({evaluate=evaluateInMhub,backup=new URL('balance-bar/native-backup.json',import.meta.url)}={}){this.evaluate=evaluate;this.backup=backup;this.loaded=false;this.last=0;this.version=null;this.force=false;this.status=null;}
  reassert(){this.force=true;this.last=0;}
+ async loadRecovery(){
+  if(this.loaded)return;
+  try{this.recovery=JSON.parse(await fs.readFile(this.backup,'utf8'));}
+  catch(error){if(error.code!=='ENOENT')throw error;}
+  this.loaded=true;
+ }
  async sync(view,settings,show=true,{nativeSideLease=false}={}){
   const requestedKey=JSON.stringify({enabled:settings.enabled,version:settings.controlVersion,brightness:settings.brightness,layout:settings.gt75Layout,show,nativeSideLease,view:view?{ratio:view.ratio,level:view.level,color:view.color}:null});
   if(Date.now()-this.last<500&&(!this.force||this.status?.deferred)&&requestedKey===this.requestedKey)return this.status;
   this.last=Date.now();this.requestedVersion=settings.controlVersion;this.requestedKey=requestedKey;
   const claim=settings.enabled&&this.version!==settings.controlVersion;
-  if(!this.loaded){try{this.recovery=JSON.parse(await fs.readFile(this.backup,'utf8'));}catch(error){if(error.code!=='ENOENT'&&!(error instanceof SyntaxError))throw error;}this.loaded=true;}
+  await this.loadRecovery();
   const input={models:BALANCE_KEYBOARDS,enabled:settings.enabled,show,nativeSideLease,palettes:Object.fromEntries(BALANCE_KEYBOARDS.map(spec=>[spec.id,view?balancePalette(view,spec,settings.gt75Layout):null])),brightness:settings.brightness,version:settings.controlVersion,claim,reassert:this.force,recovery:this.recovery};
   let result=await this.evaluate(ambientRenderer,input,5000);
   if(result.prepared){const devices=this.recovery?.devices??(this.recovery?{[this.recovery.model??'Ace 75 8K']:this.recovery}:{});this.recovery={version:2,devices:{...devices,[result.model]:result.backup}};await writeJson(this.backup,this.recovery);result=await this.evaluate(ambientRenderer,{...input,recovery:this.recovery,claim:false,prepared:true},5000);}
   if(!result.syncActive&&!result.deferred)this.version=settings.controlVersion;
   if(!result.deferred)this.force=false;return this.status=result;
  }
- async close(){return this.evaluate(ambientRenderer,{models:BALANCE_KEYBOARDS,action:'release',recovery:this.recovery},5000);}
+ async close(){
+  await this.loadRecovery();
+  const result=await this.evaluate(ambientRenderer,{models:BALANCE_KEYBOARDS,action:'release',recovery:this.recovery},5000);
+  const devices=this.recovery?.devices??(this.recovery?{[this.recovery.model??'Ace 75 8K']:this.recovery}:{});
+  const record=devices[result?.releasedModel];
+  if(record&&!record.restored){
+   const released={version:2,devices:{...devices,[result.releasedModel]:{...record,restored:true}}};
+   await writeJson(this.backup,released);this.recovery=released;
+  }
+  return result;
+ }
 }

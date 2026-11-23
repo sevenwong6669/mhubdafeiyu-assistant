@@ -33,7 +33,7 @@ export function validateScreenCycle(values){
   const result={...DEFAULT_SCREEN_CYCLE,...values};if(Object.values(result).filter(Boolean).length<2||!result.theme8)throw Error('至少保留两组主题，并保留大肥鱼自定义动画。');return result;
 }
 export class HardwareScreen{
-  constructor(){this.version=null;this.last=0;this.lastCapture=0;this.held=null;this.error=null;this.pagesVersion=null;this.pages={...DEFAULT_SCREEN_PAGES};this.page='fish';this.pageKey=null;this.listening=false;this.screenOff=false;this.buttons=new ScreenButtonDebounce();this.buttonCount=0;this.cacheKey=null;this.blocked=null;}
+  constructor({evaluatePageButtons=evaluateInMhub}={}){this.evaluatePageButtons=evaluatePageButtons;this.version=null;this.last=0;this.lastCapture=0;this.held=null;this.error=null;this.pagesVersion=null;this.pages={...DEFAULT_SCREEN_PAGES};this.page='fish';this.pageKey=null;this.listening=false;this.screenOff=false;this.buttons=new ScreenButtonDebounce();this.buttonCount=0;this.cacheKey=null;this.blocked=null;}
   async poll(){
     if(Date.now()-this.last<500)return;this.last=Date.now();
     try{const {controlVersion,...values}=JSON.parse(await fs.readFile(new URL('screen-pages.json',import.meta.url),'utf8'));if(controlVersion!==this.pagesVersion){this.pages=validateScreenPages(values);this.pagesVersion=controlVersion;this.pageKey=null;if(!this.pages[this.page])this.page=Object.keys(this.pages).find(k=>this.pages[k]);}}
@@ -50,7 +50,7 @@ export class HardwareScreen{
   async restore(){if(!this.held)return;await evaluateInMhub(async({state})=>{const m=await loadMhubModule(),d=m.aH.devices.value.find(x=>x.modelKey==='MCHOSE K20 GT');if(!d)throw Error('K20 GT 未连接');const {text,...screen}=state;if(text)await m.de.setK20GtScreenText(d.logicalDeviceId,text);window.__dafeiyuScreenExpected={...screen,at:Date.now()};await m.de.setK20GtScreenState(d.logicalDeviceId,screen);return {ok:true};},{state:this.held});}
   async pageButtons(enabled){
     if(enabled&&!this.listening){
-      await evaluateInMhub(async()=>{
+      await this.evaluatePageButtons(async()=>{
         window.__dafeiyuPageButtons?.close?.();const m=await loadMhubModule(),d=m.aH.devices.value.find(x=>x.modelKey==='MCHOSE K20 GT');if(!d)throw Error('K20 GT 未连接');
         const store={events:[],blocked:false};const off=m.de.subscribeK20GtScreen(d.logicalDeviceId,event=>{
           if(event.type!=='screenState')return;const data=event.data,own=window.__dafeiyuScreenExpected;
@@ -79,9 +79,16 @@ export class HardwareScreen{
         });store.close=off;window.__dafeiyuPageButtons=store;return {ready:true};
       });this.listening=true;this.pageKey=null;this.cacheKey=null;this.blocked=null;
     }
-    if(!enabled&&this.listening){await evaluateInMhub(async()=>{window.__dafeiyuPageButtons?.close?.();delete window.__dafeiyuPageButtons;return {stopped:true};});this.listening=false;return;}
+    if(!enabled&&this.listening){
+      await this.evaluatePageButtons(async()=>{
+        const store=window.__dafeiyuPageButtons;
+        if(store){store.blocked=true;await store.close();await store.pending;delete window.__dafeiyuPageButtons;}
+        return {stopped:true};
+      });
+      this.listening=false;return;
+    }
     if(!enabled)return;
-    const events=await evaluateInMhub(async()=>window.__dafeiyuPageButtons?.events.splice(0)??[]);
+    const events=await this.evaluatePageButtons(async()=>window.__dafeiyuPageButtons?.events.splice(0)??[]);
     for(const event of events){if(Date.now()-event.at>5000||!this.buttons.accept(event))continue;if(event.enabled===false){this.screenOff=true;continue;}if(this.screenOff){this.screenOff=false;this.pageKey=null;continue;}
       const pages=Object.keys(this.pages).filter(k=>this.pages[k]);this.page=pages.includes(event.page)?event.page:pages[(pages.indexOf(this.page)+1)%pages.length];this.pageKey=event.key??null;this.lastFastApplyMs=event.fastApplyMs??null;if(event.error)this.error=event.error;
       this.buttonCount++;this.lastButtonAt=event.at;
