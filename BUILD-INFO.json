@@ -1,7 +1,6 @@
 {
-  "package": "mhubdafeiyu-assistant-0.11.3-release-20261123-144304Z",
-  "projectVersion": "0.11.3",
-  "builtAtUtc": "2026-11-23T14:43:04.825150+00:00",
+  "package": "mhubdafeiyu-assistant-0.11.4",
+  "projectVersion": "0.11.4",
   "releaseType": "release",
   "recommendedHost": "DeepSeek Harness",
   "supportedModes": [

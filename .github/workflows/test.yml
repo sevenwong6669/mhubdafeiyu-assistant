@@ -1,5 +1,7 @@
 name: tests
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   panel-tests:
     runs-on: windows-latest
@@ -14,9 +16,42 @@ jobs:
         run: sha256sum -c SHA256SUMS.txt --quiet
       - working-directory: mhub-community-assistant
         run: node --test --test-concurrency=4 tests/*.test.mjs
+      - name: build release ZIP and checksum
+        shell: pwsh
+        run: |
+          $buildArgs = @(Join-Path $env:RUNNER_TEMP 'release')
+          if ($env:GITHUB_REF_TYPE -eq 'tag') { $buildArgs += @('--tag', $env:GITHUB_REF_NAME) }
+          $archive = python .github/scripts/build-release.py @buildArgs
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          "RELEASE_ZIP=$archive" >> $env:GITHUB_ENV
       - name: install and uninstall (Windows PowerShell 5.1)
         shell: powershell
-        run: ./tests/install-uninstall.test.ps1 -PythonPath (Get-Command python.exe).Source
+        run: ./tests/install-uninstall.test.ps1 -PythonPath (Get-Command python.exe).Source -PackageZip $env:RELEASE_ZIP
       - name: install and uninstall (PowerShell 7)
         shell: pwsh
-        run: ./tests/install-uninstall.test.ps1 -PythonPath (Get-Command python.exe).Source
+        run: ./tests/install-uninstall.test.ps1 -PythonPath (Get-Command python.exe).Source -PackageZip $env:RELEASE_ZIP
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        with:
+          name: verified-release
+          path: ${{ runner.temp }}/release
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: panel-tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-release
+      - name: publish verified ZIP and checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          archive="mhubdafeiyu-assistant-${GITHUB_REF_NAME#v}.zip"
+          sha256sum --check "$archive.sha256"
+          gh release create "$GITHUB_REF_NAME" "$archive" "$archive.sha256" \
+            --repo "$GITHUB_REPOSITORY" --verify-tag --title "$GITHUB_REF_NAME" --generate-notes

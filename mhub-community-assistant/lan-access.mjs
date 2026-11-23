@@ -37,7 +37,11 @@ export function createLanAccess(config,{port=18782,clock=Date.now}={}){
  return async function authorize(request,peer){
   peer=peer?.replace(/^::ffff:/,'');const url=new URL(request.url);
   if(!isIPv4(peer??'')||((ipv4(peer)&mask)>>>0)!==network||url.origin!==origin)return json('仅允许当前局域网访问。',403);
-  if(request.headers.has('origin')&&request.headers.get('origin')!==origin||['cross-site','same-site'].includes(request.headers.get('sec-fetch-site')))return json('请从大肥鱼后台页面发起操作。',403);
+  const loginPage=request.method==='GET'&&['/','/lan/login','/api/mhub-community/panel'].includes(url.pathname);
+  if(request.headers.has('origin')&&request.headers.get('origin')!==origin||['cross-site','same-site'].includes(request.headers.get('sec-fetch-site'))){
+   if(loginPage&&request.headers.get('sec-fetch-mode')==='navigate'&&request.headers.get('sec-fetch-dest')==='document')return login();
+   return json('请从大肥鱼后台页面发起操作。',403);
+  }
   const bearer=request.headers.get('authorization')?.match(/^Bearer (\S+)$/i)?.[1];
   const cookie=request.headers.get('cookie')?.split(';').map(x=>x.trim()).find(x=>x.startsWith(COOKIE+'='))?.slice(COOKIE.length+1);
   const authenticated=keyMatches(bearer)||sessionMatches(cookie);
@@ -49,7 +53,7 @@ export function createLanAccess(config,{port=18782,clock=Date.now}={}){
    return new Response(null,{status:303,headers:{...headers,location:'/api/mhub-community/panel','set-cookie':`${COOKIE}=${value}.${sign(value)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${LIFETIME}`}});
   }
   if(authenticated)return null;
-  if(request.method==='GET'&&['/','/lan/login','/api/mhub-community/panel'].includes(url.pathname))return login();
+  if(loginPage)return login();
   return json('请先登录局域网后台，或提供 Authorization: Bearer 访问口令。',401);
  };
 }

@@ -1,11 +1,16 @@
-param([Parameter(Mandatory)][string]$PythonPath)
+param(
+    [Parameter(Mandatory)][string]$PythonPath,
+    [Parameter(Mandatory)][string]$PackageZip
+)
 
 $ErrorActionPreference = 'Stop'
-$source = Split-Path $PSScriptRoot -Parent
+$PackageZip = (Resolve-Path -LiteralPath $PackageZip).ProviderPath
 $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
 $testRoot = Join-Path $tempRoot ('mhub-install-test-' + [guid]::NewGuid().ToString('N'))
-$bundle = Join-Path $testRoot 'plugin with spaces'
+$extracted = Join-Path $testRoot 'extracted release'
+$bundle = Join-Path $extracted ([IO.Path]::GetFileNameWithoutExtension($PackageZip))
 $panel = Join-Path $bundle 'mhub-community-assistant'
+$sync = Join-Path $bundle 'harness-mhub-sync'
 $install = Join-Path $bundle 'Install.ps1'
 $uninstall = Join-Path $bundle 'Uninstall.ps1'
 $testHome = Join-Path $testRoot 'test user'
@@ -104,6 +109,84 @@ function Assert-GuardFailureStopsUninstall {
     Remove-Item -LiteralPath $guardFile
 }
 
+function Assert-DeviceWorkersExitBeforePanel {
+    $guardFile = Join-Path $state 'panel-guard.json'
+    $instanceFile = Join-Path $state 'panel-instance.json'
+    $supervisorFile = Join-Path $sync 'supervisor.pid'
+    $controllerFile = Join-Path $sync 'run.pid'
+    $panelScript = Join-Path $panel 'scripts/start-panel.mjs'
+    $panelGuard = Join-Path $panel 'scripts/watch-panel.ps1'
+    $processes = @{
+        43220 = [pscustomobject]@{ ProcessId = 43220; Name = 'node.exe'; CommandLine = ('node.exe "' + (Join-Path $sync 'supervisor.mjs') + '"') }
+        43221 = [pscustomobject]@{ ProcessId = 43221; Name = 'node.exe'; CommandLine = ('node.exe "' + (Join-Path $sync 'optimized.mjs') + '" --hold') }
+        43222 = [pscustomobject]@{ ProcessId = 43222; Name = 'powershell.exe'; CommandLine = ('powershell.exe -File "' + $panelGuard + '"') }
+        43223 = [pscustomobject]@{ ProcessId = 43223; Name = 'node.exe'; CommandLine = 'node.exe scripts/start-panel.mjs' }
+    }
+    $order = [Collections.Generic.List[string]]::new()
+    function Get-CimInstance {
+        [CmdletBinding()]
+        param([string]$ClassName, [string]$Filter)
+        $processes.Values | Where-Object { !$Filter -or "ProcessId=$($_.ProcessId)" -eq $Filter }
+    }
+    function Get-Process {
+        [CmdletBinding()]
+        param([string]$Name, [int]$Id)
+        $processes[$Id]
+    }
+    function Invoke-RestMethod {
+        param([string]$Uri, [int]$TimeoutSec)
+        Assert-That ($Uri -eq 'http://127.0.0.1:18782/health') 'Relative panel was not verified through its health endpoint.'
+        return @{ service = 'dafeiyu-panel'; pid = 43223; instanceId = 'fixture-panel' }
+    }
+    function Stop-Process {
+        [CmdletBinding()]
+        param([int]$Id, [switch]$Force)
+        Assert-That ($Id -in @(43222, 43223)) 'Uninstall attempted to force-stop a device worker.'
+        $order.Add("stop:$Id")
+        $processes.Remove($Id)
+    }
+    function Wait-Process {
+        [CmdletBinding()]
+        param([int[]]$Id, [int]$Timeout)
+        if ($Id -contains 43220 -or $Id -contains 43221) {
+            Assert-That ($Id -contains 43220 -and $Id -contains 43221) 'Uninstall did not wait for both device workers.'
+            Assert-That ([IO.File]::ReadAllText((Join-Path $sync 'stop.request')) -eq 'stop') 'Uninstall did not request restoration before waiting.'
+            $order.Add('release:sync')
+            $processes.Remove(43220)
+            $processes.Remove(43221)
+        }
+    }
+
+    [IO.File]::WriteAllText($supervisorFile, '43220', $utf8)
+    [IO.File]::WriteAllText($controllerFile, '43221', $utf8)
+    [IO.File]::WriteAllText($guardFile, '{"pid":43222,"serverPid":0}', $utf8)
+    [IO.File]::WriteAllText($instanceFile, (@{pid=43223; script=$panelScript; instanceId='fixture-panel'} | ConvertTo-Json), $utf8)
+    $null = Invoke-Uninstall
+    Assert-That (($order -join ',') -eq 'release:sync,stop:43222,stop:43223') 'Uninstall did not release sync before stopping the guard and the relative-path panel.'
+    foreach ($file in @($guardFile, $instanceFile, $supervisorFile, $controllerFile)) { Remove-Item -LiteralPath $file }
+}
+
+function Assert-RestrictedCimUninstall {
+    function Get-CimInstance { throw 'Simulated CIM access denied (0x80041003)' }
+    $null = Invoke-Uninstall
+    Assert-HarnessUnlinked
+
+    Reset-HarnessRegistration
+    $guardFile = Join-Path $state 'panel-guard.json'
+    [IO.File]::WriteAllText($guardFile, '{"pid":43224}', $utf8)
+    function Get-Process {
+        [CmdletBinding()]
+        param([string]$Name, [int]$Id)
+        if ($Id -eq 43224) { @{ Id = $Id } }
+    }
+    function powershell.exe { throw 'Simulated native process query failure' }
+    $failure = $null
+    try { $null = Invoke-Uninstall } catch { $failure = $_ }
+    Assert-That ($null -ne $failure) 'Uninstall accepted a live process with unverifiable ownership.'
+    Assert-That ([IO.File]::ReadAllText($profileJson) -ceq $installedProfile) 'Uninstall unlinked a profile while its guard could not be verified.'
+    Remove-Item -LiteralPath $guardFile
+}
+
 function Assert-LockedRecordRollback([IO.FileShare]$Sharing) {
     $priorBackups = @(Get-ChildItem -LiteralPath $bundle -Directory -Filter 'harness-install-backup-*').Count
     $lock = [IO.File]::Open($record, [IO.FileMode]::Open, [IO.FileAccess]::Read, $Sharing)
@@ -126,18 +209,14 @@ function Assert-LockedRecordRollback([IO.FileShare]$Sharing) {
 
 $null = New-Item -ItemType Directory -Path $testRoot
 try {
-    $fixtureFiles = @(
-        'Install.ps1', 'Uninstall.ps1', 'mhub-community-assistant/package.json',
-        'mhub-community-assistant/client.js', 'mhub-community-assistant/cordis.bundle.yml',
-        'mhub-community-assistant/panel/icon.svg', 'mhub-community-assistant/aurabot-panel.js'
-    )
-    $manifest = foreach ($relative in $fixtureFiles) {
-        $destination = Join-Path $bundle $relative
-        $null = New-Item -Force -ItemType Directory -Path (Split-Path -Parent $destination)
-        Copy-Item -LiteralPath (Join-Path $source $relative) -Destination $destination
-        (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $relative
-    }
-    [IO.File]::WriteAllLines((Join-Path $bundle 'SHA256SUMS.txt'), [string[]]$manifest, $utf8)
+    $zipName = [IO.Path]::GetFileName($PackageZip)
+    $expectedSum = [IO.File]::ReadAllText("$PackageZip.sha256").Trim()
+    $zipHash = (Get-FileHash -LiteralPath $PackageZip -Algorithm SHA256).Hash
+    Assert-That ($expectedSum -eq "$zipHash  $zipName") 'Release ZIP checksum mismatch.'
+    Expand-Archive -LiteralPath $PackageZip -DestinationPath $extracted
+    $manifest = [IO.File]::ReadAllLines((Join-Path $bundle 'SHA256SUMS.txt'))
+    Assert-That ($manifest.Count + 1 -eq @(Get-ChildItem -LiteralPath $bundle -Force -File -Recurse).Count) 'The archive contains files outside its manifest.'
+    'PASS: extracted and verified the release ZIP'
     $null = New-Item -ItemType File -Path $mhub
     # Use the real interpreter and venv but replace the dependency download in this fixture.
     $env:PYTHONPATH = Join-Path $testRoot 'python-stubs'
@@ -217,6 +296,13 @@ try {
     Assert-That ([IO.File]::ReadAllText($index) -ceq $installedEntry) 'Failed unlink removed the module.'
     'PASS: a locked Harness patch rolls back the registration update'
 
+    Assert-DeviceWorkersExitBeforePanel
+    Assert-HarnessUnlinked
+    'PASS: device workers exit before the guard and relative-path panel'
+    Reset-HarnessRegistration
+    Assert-RestrictedCimUninstall
+    'PASS: restricted CIM permits idle cleanup and preserves an unverified live guard'
+
     Remove-FixtureTree $module
     $originalSettings = '{"mhub":"fixture","userPreference":"keep"}'
     $originalRecord = '{"hosts":[],"previous":"keep"}'
@@ -226,6 +312,40 @@ try {
     [IO.File]::WriteAllText($profilePatch, $originalPatch, $utf8)
     Assert-LockedRecordRollback ([IO.FileShare]::None)
     Assert-LockedRecordRollback ([IO.FileShare]::Read)
+
+    # Simulate another installer changing all three host entries while pip runs.
+    $pipStub = @'
+import json
+import os
+from pathlib import Path
+
+profile = Path(os.environ["USERPROFILE"]) / ".dsh" / "profiles" / "desktop"
+manifest = profile / "package.json"
+package = json.loads(manifest.read_text(encoding="utf-8"))
+package["dependencies"]["concurrent-plugin"] = "2.0.0"
+package["dsh"]["profile"]["bundles"].append("concurrent-plugin")
+manifest.write_text(json.dumps(package), encoding="utf-8")
+with (profile / "cordis.patch.yml").open("a", encoding="utf-8") as patch:
+    patch.write("- id: concurrent-plugin\n  name: concurrent-plugin\n")
+'@
+    [IO.File]::WriteAllText((Join-Path $env:PYTHONPATH 'pip.py'), $pipStub, $utf8)
+    $null = & $install -PythonPath $PythonPath -MhubPath $mhub -LinkHarness
+    $concurrentPackage = [IO.File]::ReadAllText($profileJson) | ConvertFrom-Json
+    Assert-That ($concurrentPackage.dependencies.'concurrent-plugin' -eq '2.0.0') 'Installation lost a dependency added during pip.'
+    Assert-That ('concurrent-plugin' -in $concurrentPackage.dsh.profile.bundles) 'Installation lost a bundle added during pip.'
+    Assert-That ([IO.File]::ReadAllText($profilePatch) -match '(?m)^- id: concurrent-plugin\r?$') 'Installation lost a patch added during pip.'
+    'PASS: installation preserves Harness configuration added during dependency preparation'
+
+    $null = Invoke-Uninstall
+    $conflictingStub = $pipStub.Replace('concurrent-plugin', 'dsh-mhub-community-v11')
+    [IO.File]::WriteAllText((Join-Path $env:PYTHONPATH 'pip.py'), $conflictingStub, $utf8)
+    $failure = $null
+    try { $null = & $install -PythonPath $PythonPath -MhubPath $mhub -LinkHarness } catch { $failure = $_ }
+    Assert-That ($failure.Exception.Message -like '*Existing MCHose plugin detected*') 'Installation did not reject a conflicting link added during pip.'
+    $conflictingPackage = [IO.File]::ReadAllText($profileJson) | ConvertFrom-Json
+    Assert-That ($conflictingPackage.dependencies.'dsh-mhub-community-v11' -eq '2.0.0') 'A conflicting installation lost its dependency.'
+    Assert-That (!(Test-Path -LiteralPath $module)) 'Installer wrote a module after a conflicting link appeared.'
+    'PASS: installation rejects a conflicting link added during dependency preparation'
 } finally {
     $env:USERPROFILE = $oldUserProfile
     $env:PYTHONPATH = $oldPythonPath

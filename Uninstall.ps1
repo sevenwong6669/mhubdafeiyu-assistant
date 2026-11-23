@@ -20,54 +20,137 @@ $expectedState = (Join-Path $panel 'state').Replace('\','/')
 $scriptDir = Join-Path $panel 'scripts'
 $utf8 = [Text.UTF8Encoding]::new($false)
 
-function Test-ProcessScript($Process, [string]$ScriptName) {
-    $expected = Join-Path $scriptDir $ScriptName
-    $arguments = [regex]::Matches([string]$Process.CommandLine, '"[^"]*"|\S+')
-    if ($ScriptName -eq 'start-panel.mjs') {
-        return ($Process.Name -eq 'node.exe' -and $arguments.Count -ge 2 -and $arguments[1].Value.Trim('"') -eq $expected)
-    }
-    if ($Process.Name -notin @('powershell.exe', 'pwsh.exe')) { return $false }
-    for ($i = 1; $i -lt $arguments.Count - 1; $i++) {
-        if ($arguments[$i].Value -eq '-File') { return ($arguments[$i + 1].Value.Trim('"') -eq $expected) }
-    }
-    return $false
-}
+$sync = Join-Path $root 'harness-mhub-sync'
+$state = Join-Path $panel 'state'
+$inspectionScript = Join-Path $scriptDir 'inspect-process.ps1'
+$cimUnavailable = $false
+$unreadableProcessRecord = $false
 
-function Stop-OwnedProcess([int]$TargetProcessId, [string]$ScriptName, [string]$Role) {
+function Read-ProcessRecord([string]$Path) {
+    if (!(Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
     try {
-        $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$TargetProcessId" -ErrorAction Stop
-        if (!$proc) { return $true }
-        if (!$proc.CommandLine) {
-            Write-Warning "Could not read the command line for $Role (pid $TargetProcessId)."
-            return $false
-        }
-        if (!(Test-ProcessScript $proc $ScriptName)) {
-            Write-Warning "Ignoring stale $Role pid ${TargetProcessId}: it does not run this install's $ScriptName."
-            return $true
-        }
-        Stop-Process -Id $TargetProcessId -Force -ErrorAction Stop
-        $null = Wait-Process -Id $TargetProcessId -Timeout 10 -ErrorAction SilentlyContinue
-        if (Get-Process -Id $TargetProcessId -ErrorAction SilentlyContinue) {
-            Write-Warning "${Role}: pid $TargetProcessId did not exit within 10s."
-            return $false
-        }
-        Write-Host "Stopped ${Role}: pid $TargetProcessId."
-        return $true
+        return (ConvertFrom-Json -InputObject ([IO.File]::ReadAllText($Path)))
     } catch {
-        Write-Warning "Could not stop $Role (pid ${TargetProcessId}): $($_.Exception.Message)"
-        return $false
+        $script:unreadableProcessRecord = $true
+        Write-Warning "Cannot read process record $Path. $($_.Exception.Message)"
+        return $null
     }
 }
 
-function Stop-InstallProcesses([int]$RecordedProcessId, [string]$ScriptName, [string]$Role) {
-    $processIds = @(Get-CimInstance Win32_Process -ErrorAction Stop |
-        Where-Object { Test-ProcessScript $_ $ScriptName } |
-        ForEach-Object { [int]$_.ProcessId })
-    if ($RecordedProcessId -gt 0 -and $RecordedProcessId -notin $processIds) { $processIds += $RecordedProcessId }
-    foreach ($targetProcessId in $processIds) {
-        if (!(Stop-OwnedProcess $targetProcessId $ScriptName $Role)) {
-            throw "Could not confirm that $Role stopped. Close it and retry. Registration and user state were preserved."
+function Test-ProcessScript($Process, [string]$Expected, $PanelInstance) {
+    $arguments = [regex]::Matches([string]$Process.CommandLine, '"[^"]*"|\S+')
+    $argument = $null
+    if ($Expected.EndsWith('.ps1')) {
+        if ($Process.Name -notin @('powershell.exe', 'pwsh.exe')) { return $false }
+        for ($i = 1; $i -lt $arguments.Count - 1; $i++) {
+            if ($arguments[$i].Value -eq '-File') { $argument = $arguments[$i + 1].Value.Trim('"'); break }
         }
+    } elseif ($Process.Name -eq 'node.exe' -and $arguments.Count -ge 2) {
+        $argument = $arguments[1].Value.Trim('"')
+    }
+    if (!$argument) { return $false }
+    if ($argument -match '^(?:[a-z]:[\\/]|\\\\)') {
+        try { return ([IO.Path]::GetFullPath($argument) -eq $Expected) }
+        catch { return $false }
+    }
+
+    # npm can start the panel with a relative script argument. The loopback
+    # instance ID ties the live process to this install's absolute script path.
+    if ($argument.Replace('\','/') -notin @('scripts/start-panel.mjs', './scripts/start-panel.mjs') -or
+        !$PanelInstance -or $PanelInstance.pid -ne $Process.ProcessId -or $PanelInstance.script -ne $Expected) { return $false }
+    try { $health = Invoke-RestMethod 'http://127.0.0.1:18782/health' -TimeoutSec 2 }
+    catch { throw 'Cannot verify the relative-path panel instance. Stop it and retry.' }
+    if ($health.service -ne 'dafeiyu-panel' -or $health.pid -ne $Process.ProcessId -or
+        !$PanelInstance.instanceId -or $health.instanceId -ne $PanelInstance.instanceId) {
+        throw 'Cannot verify the relative-path panel instance. Stop it and retry.'
+    }
+    return $true
+}
+
+function Get-InstallProcessIds([string]$ScriptPath, [int[]]$RecordedIds) {
+    $processIds = @()
+    if (!$script:cimUnavailable) {
+        try { $processes = @(Get-CimInstance Win32_Process -ErrorAction Stop) }
+        catch {
+            $script:cimUnavailable = $true
+            Write-Warning "Windows process scanning through CIM is unavailable. Only recorded processes can be verified. $($_.Exception.Message)"
+        }
+        if (!$script:cimUnavailable) {
+            $processIds = @($processes | Where-Object { Test-ProcessScript $_ $ScriptPath } |
+                ForEach-Object { [int]$_.ProcessId })
+        }
+    }
+    if ($script:cimUnavailable -and $script:unreadableProcessRecord) {
+        throw 'A process record is unreadable and Windows process scanning is unavailable. Close the plugin processes and retry with access to the records.'
+    }
+    return @(@($processIds) + @($RecordedIds) | Where-Object { $_ -gt 0 } | Select-Object -Unique)
+}
+
+function Read-InstallProcess([int]$TargetProcessId) {
+    if (!$script:cimUnavailable) {
+        try {
+            $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$TargetProcessId" -ErrorAction Stop
+            if (!$proc -or $proc.CommandLine) { return $proc }
+        } catch {
+            Write-Warning "Cannot read pid $TargetProcessId through CIM. Trying the native process query."
+        }
+    }
+    if (!(Get-Process -Id $TargetProcessId -ErrorAction SilentlyContinue)) { return $null }
+    try { $raw = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $inspectionScript -TargetId $TargetProcessId }
+    catch { throw "Cannot verify pid $TargetProcessId. Close the process and retry. $($_.Exception.Message)" }
+    if ($LASTEXITCODE -ne 0 -or !$raw) { throw "Cannot verify pid $TargetProcessId. Close the process and retry." }
+    $info = ConvertFrom-Json -InputObject ($raw -join [Environment]::NewLine)
+    if ($info.pid -ne $TargetProcessId -or !$info.command) { throw "Cannot verify pid $TargetProcessId. Close the process and retry." }
+    return [pscustomobject]@{ProcessId = $info.pid; Name = $info.name; CommandLine = $info.command}
+}
+
+function Get-OwnedProcessIds([string]$ScriptPath, [int[]]$RecordedIds, $PanelInstance) {
+    foreach ($targetProcessId in @(Get-InstallProcessIds $ScriptPath $RecordedIds)) {
+        $proc = Read-InstallProcess $targetProcessId
+        if ($proc -and (Test-ProcessScript $proc $ScriptPath $PanelInstance)) { $targetProcessId }
+    }
+}
+
+function Stop-InstallProcesses([string]$ScriptPath, [int[]]$RecordedIds, [string]$Role, $PanelInstance) {
+    foreach ($targetProcessId in @(Get-OwnedProcessIds $ScriptPath $RecordedIds $PanelInstance)) {
+        try {
+            Stop-Process -Id $targetProcessId -Force -ErrorAction Stop
+            $null = Wait-Process -Id $targetProcessId -Timeout 10 -ErrorAction SilentlyContinue
+            if (Get-Process -Id $targetProcessId -ErrorAction SilentlyContinue) { throw 'The process did not exit within 10 seconds.' }
+            Write-Host "Stopped ${Role}: pid $targetProcessId."
+        } catch {
+            throw "Could not confirm that $Role stopped (pid ${targetProcessId}). $($_.Exception.Message) Close it and retry."
+        }
+    }
+}
+
+function Stop-DeviceSync {
+    if (!(Test-Path -LiteralPath $sync -PathType Container)) { return }
+    # The controller observes the same request as the panel's Stop action and
+    # restores its previous scene before exiting. Never force it from here.
+    $requestedAt = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+    [IO.File]::WriteAllText((Join-Path $sync 'stop.request'), 'stop', $utf8)
+    $supervisor = Join-Path $sync 'supervisor.mjs'
+    $controller = Join-Path $sync 'optimized.mjs'
+    $supervisorStatus = Read-ProcessRecord (Join-Path $sync 'supervisor-status.json')
+    $controllerStatus = Read-ProcessRecord (Join-Path $sync 'controller-health.json')
+    $supervisorIds = @((Read-ProcessRecord (Join-Path $sync 'supervisor.pid')), $supervisorStatus.pid)
+    $controllerIds = @((Read-ProcessRecord (Join-Path $sync 'run.pid')), $supervisorStatus.childPid, $controllerStatus.pid)
+    $owned = @(
+        Get-OwnedProcessIds $supervisor $supervisorIds
+        Get-OwnedProcessIds $controller $controllerIds
+    ) | Select-Object -Unique
+    if ($owned) {
+        Write-Host 'Waiting for device sync to restore the previous scene and exit.'
+        # Match the observation budget in harness-mhub-sync/release-policy.mjs.
+        $null = Wait-Process -Id @($owned) -Timeout 180 -ErrorAction SilentlyContinue
+        $pending = Read-ProcessRecord (Join-Path $sync 'shutdown-pending.json')
+        if ($pending.at -ge $requestedAt -and $pending.pid -in @($owned)) {
+            throw 'Device state restoration needs review. Check shutdown-pending.json before retrying uninstall.'
+        }
+    }
+    if (@(Get-OwnedProcessIds $supervisor $supervisorIds).Count -or @(Get-OwnedProcessIds $controller $controllerIds).Count) {
+        throw 'Device sync is still releasing control. Wait for the supervisor and controller to exit, then retry.'
     }
 }
 
@@ -112,20 +195,15 @@ function Update-HarnessRegistration($Changes) {
     foreach ($change in $applied) { "Updated $($change.path); backup: $($change.backup)" }
 }
 
-# Confirm the guard has exited before scanning for its panel server.
-$guardState = Join-Path $panel 'state/panel-guard.json'
-$guardPid = 0; $panelPid = 0
-if (Test-Path -LiteralPath $guardState -PathType Leaf) {
-    try {
-        $guard = Get-Content -LiteralPath $guardState -Raw -Encoding UTF8 | ConvertFrom-Json
-        $guardPid = [int]$guard.pid; $panelPid = [int]$guard.serverPid
-    } catch {
-        Write-Warning "Panel guard record unreadable: $($_.Exception.Message)"
-        $guardPid = 0; $panelPid = 0
-    }
-}
-Stop-InstallProcesses $guardPid 'watch-panel.ps1' 'Panel guard'
-Stop-InstallProcesses $panelPid 'start-panel.mjs' 'Panel server'
+# Wait for anything that can relaunch the panel, then stop its guard and server.
+Stop-DeviceSync
+$guard = Read-ProcessRecord (Join-Path $state 'panel-guard.json')
+$instance = Read-ProcessRecord (Join-Path $state 'panel-instance.json')
+Stop-InstallProcesses (Join-Path $scriptDir 'watch-panel.ps1') @($guard.pid) 'Panel guard'
+$serverIds = @($guard.serverPid)
+$serverScript = Join-Path $scriptDir 'start-panel.mjs'
+if ($instance.script -eq $serverScript) { $serverIds += $instance.pid }
+Stop-InstallProcesses $serverScript $serverIds 'Panel server' $instance
 
 $record = $null
 $recordFile = Join-Path $panel 'state/install-record.json'

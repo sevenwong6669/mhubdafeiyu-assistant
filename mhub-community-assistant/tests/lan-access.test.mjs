@@ -45,3 +45,23 @@ test('legacy LAN clients see the login form and need a session for panel assets 
   }
   assert.equal(await authorize(request(state,{headers:{authorization:'Bearer '+key}}),peer),null);
 });
+
+test('cross-origin top-level LAN links show the login form while API and write checks stay in place',async()=>{
+  const authorize=createLanAccess(config);
+  for(const site of ['same-site','cross-site']){
+    const navigation={
+      'sec-fetch-site':site,'sec-fetch-mode':'navigate','sec-fetch-dest':'document',
+    };
+    for(const route of ['/',panel,'/lan/login']){
+      const response=await authorize(request(route,{headers:navigation}),peer);
+      assert.equal(response.status,200);
+      assert.match(await response.text(),/action="\/lan\/login"/);
+    }
+    for(const route of ['/api/mhub-community/state','/api/mhub-community/panel.js']){
+      assert.equal((await authorize(request(route,{headers:navigation}),peer)).status,403);
+    }
+    assert.equal((await authorize(request(panel,{headers:{...navigation,'sec-fetch-dest':'iframe'}}),peer)).status,403);
+    assert.equal((await authorize(request('/lan/login',{method:'POST',headers:navigation,body:new URLSearchParams({key})}),peer)).status,403);
+    assert.equal((await authorize(request(panel,{headers:navigation}),'192.168.21.5')).status,403);
+  }
+});

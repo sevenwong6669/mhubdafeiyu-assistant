@@ -22,12 +22,12 @@
 
 ## 快速开始
 
-1. 从 **Releases** 下载完整发布包（不要用 Code → Download ZIP，校验清单按发布包字节生成）。
+1. 从 [Releases](https://github.com/sevenwong6669/mhubdafeiyu-assistant/releases/latest) 下载完整发布 ZIP。附带的 .sha256 文件可用于校验下载。
 2. 解压到一个长期目录。
 3. 运行 `Install.ps1 -LinkHarness`；需要语音和桌宠时再加 `-PrepareVoice -PrepareDesktop`。
 4. 打开面板按首次引导逐项开启功能。
 
-卸载运行 `Uninstall.ps1`，只撤销安装器做过的改动，不碰你的配置和状态。
+卸载运行 `Uninstall.ps1`。脚本先请求设备联动释放控制并停止面板，再解除已验证归属的宿主注册。用户设置和备份会保留。
 
 ## 目录与文档
 

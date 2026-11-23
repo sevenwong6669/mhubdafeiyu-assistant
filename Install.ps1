@@ -47,7 +47,7 @@ function Resolve-File([string]$Path) {
     return $item.FullName
 }
 
-function Write-LocalText([string]$Path, [string]$Content) {
+function Write-LocalText([string]$Path, [string]$Content, $Expected) {
     if (!$savedFiles.ContainsKey($Path)) {
         if (!$script:installBackup) {
             $script:installBackup = Join-Path $root ('install-backup-' + [guid]::NewGuid().ToString('N'))
@@ -59,19 +59,54 @@ function Write-LocalText([string]$Path, [string]$Content) {
         $savedFiles[$Path] = @{existed=$existed; backup=$snapshot}
         [IO.File]::WriteAllText((Join-Path $script:installBackup 'files.json'), ($savedFiles | ConvertTo-Json -Depth 5), $utf8)
     }
+    if ($Expected -and ($savedFiles[$Path].existed -ne $Expected.existed -or
+            ($Expected.existed -and [IO.File]::ReadAllText($savedFiles[$Path].backup) -cne $Expected.text))) {
+        throw "Harness changed $Path before it could be backed up. Close Harness and retry."
+    }
     $temp = "$Path.install-" + [guid]::NewGuid().ToString('N') + '.tmp'
     $previous = "$temp.previous"
     try {
         [IO.File]::WriteAllText($temp, $Content, $utf8)
+        if ($Expected -and ($Expected.existed -ne [IO.File]::Exists($Path) -or
+                ($Expected.existed -and [IO.File]::ReadAllText($Path) -cne $Expected.text))) {
+            throw "Harness changed $Path during installation. Close Harness and retry."
+        }
         if ($savedFiles[$Path].existed -or $writtenFiles.Contains($Path)) {
             [IO.File]::Replace($temp, $Path, $previous)
         } else {
             [IO.File]::Move($temp, $Path)
         }
         $writtenFiles.Add($Path)
+        if ($Expected) {
+            $savedFiles[$Path].writtenText = $Content
+            if ($Expected.existed -and [IO.File]::ReadAllText($previous) -cne $Expected.text) {
+                $savedFiles[$Path].backup = $previous
+                throw "Harness changed $Path during installation. Close Harness and retry."
+            }
+        }
         [IO.File]::Delete($previous)
     } finally {
         [IO.File]::Delete($temp)
+    }
+}
+
+function Read-HarnessRegistration {
+    if (Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue) { throw 'Close DeepSeek Harness before linking its profile.' }
+    if (!(Test-Path -LiteralPath $profileJson -PathType Leaf)) { throw 'Open and initialize DeepSeek Harness first.' }
+    $profileText = [IO.File]::ReadAllText($profileJson)
+    $package = ConvertFrom-Json -InputObject $profileText
+    $patchExists = Test-Path -LiteralPath $profilePatch -PathType Leaf
+    $patchText = if ($patchExists) { [IO.File]::ReadAllText($profilePatch) } else { '' }
+    if (!$package.dsh.profile -or !$package.dependencies) { throw 'Unsupported Harness profile layout.' }
+    if ((Test-Path -LiteralPath $module) -or $package.dependencies.PSObject.Properties['dsh-mhub-community-v11'] -or
+        @($package.dsh.profile.bundles) -contains 'dsh-mhub-community-v11' -or
+        $patchText -match '(?m)^\s*-\s*id:\s*["'']?mhub-community-assistant["'']?\s*(?:#.*)?$') {
+        throw 'Existing MCHose plugin detected. Preserve it and follow the upgrade notes.'
+    }
+    return @{
+        package = $package
+        profile = @{existed = $true; text = $profileText}
+        patch = @{existed = $patchExists; text = $patchText}
     }
 }
 
@@ -102,6 +137,10 @@ function Undo-Installation {
         $path = $writtenFiles[$i]
         $snapshot = $savedFiles[$path]
         try {
+            if ($snapshot.ContainsKey('writtenText') -and
+                (![IO.File]::Exists($path) -or [IO.File]::ReadAllText($path) -cne $snapshot.writtenText)) {
+                throw 'The file changed again after installation. Use the saved copy to review the changes.'
+            }
             if ($snapshot.existed) { Copy-Item -LiteralPath $snapshot.backup -Destination $path -Force }
             elseif ([IO.File]::Exists($path)) { Remove-Item -LiteralPath $path }
         } catch { $rollbackErrors.Add("${path}: $($_.Exception.Message)") }
@@ -161,12 +200,7 @@ $voiceModule = Join-Path $profile 'node_modules/dsh-fish-voice'
 $auraRoot = Join-Path $DshRoot 'plugins-data/aurabot'
 $auraModule = Join-Path $auraRoot 'modules/mhub-companion'
 if ($LinkHarness) {
-    if (Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue) { throw 'Close DeepSeek Harness before linking its profile.' }
-    if (!(Test-Path -LiteralPath $profileJson -PathType Leaf)) { throw 'Open and initialize DeepSeek Harness first.' }
-    $package = Get-Content -LiteralPath $profileJson -Raw -Encoding UTF8 | ConvertFrom-Json
-    $patch = if (Test-Path -LiteralPath $profilePatch) { Get-Content -LiteralPath $profilePatch -Raw -Encoding UTF8 } else { '' }
-    if (!$package.dsh.profile -or !$package.dependencies) { throw 'Unsupported Harness profile layout.' }
-    if ((Test-Path -LiteralPath $module) -or $package.dependencies.PSObject.Properties['dsh-mhub-community-v11'] -or $patch -match '(?m)^- id: mhub-community-assistant\s*$') { throw 'Existing MCHose plugin detected. Preserve it and follow the upgrade notes.' }
+    $null = Read-HarnessRegistration
 }
 if ($LinkAuraBot) {
     if (!(Test-Path -LiteralPath (Join-Path $auraRoot 'modules') -PathType Container)) { throw 'Initialize AuraBot first.' }
@@ -226,6 +260,9 @@ if ($PrepareVoice) {
 }
 
 if ($LinkHarness) {
+    $registration = Read-HarnessRegistration
+    $package = $registration.package
+    $patch = $registration.patch.text
     $backup = Join-Path $root ('harness-install-backup-' + [guid]::NewGuid().ToString('N'))
     $null = New-Item -ItemType Directory -Path $backup
     Copy-Item -LiteralPath $profileJson -Destination $backup
@@ -243,8 +280,8 @@ if ($LinkHarness) {
     Copy-Item -LiteralPath (Join-Path $panel 'panel/icon.svg') -Destination (Join-Path $module 'panel')
     $stateJson = (Join-Path $panel 'state').Replace('\','/') | ConvertTo-Json -Compress
     $patch += "`n- id: mhub-community-assistant`n  name: dsh-mhub-community-v11`n  config:`n    stateDir: $stateJson`n"
-    Write-LocalText $profilePatch $patch
-    Write-LocalText $profileJson ($package | ConvertTo-Json -Depth 30)
+    Write-LocalText $profilePatch $patch $registration.patch
+    Write-LocalText $profileJson ($package | ConvertTo-Json -Depth 30) $registration.profile
     "Harness profile backup: $backup"
 }
 if ($LinkAuraBot) {

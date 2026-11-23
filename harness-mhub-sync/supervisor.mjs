@@ -63,8 +63,9 @@ const voiceRecovery=new VoiceRecovery({
  }),
 });
 async function ensurePanel(){
- if(panelChecking||Date.now()-lastPanelCheck<3000)return;lastPanelCheck=Date.now();panelChecking=true;
+ if(stopping||panelChecking||Date.now()-lastPanelCheck<3000)return;lastPanelCheck=Date.now();panelChecking=true;
  try{
+  if(!readDeviceLink().enabled||await exists('stop.request'))return;
   const response=await fetch('http://127.0.0.1:18782/health',{signal:AbortSignal.timeout(1500),redirect:'error'});
   if(response.ok){const value=await response.json();if(value.service==='dafeiyu-panel'&&value.ok){panelFailures=0;panelState='running';return;}}
   // An old panel may still work. Never replace an unrecognized port owner.
@@ -74,6 +75,7 @@ async function ensurePanel(){
   panelFailures++;panelState='reconnecting';
   if(panelChild&&panelChild.exitCode===null)return;
   if(panelFailures<2)return;
+  if(stopping||!readDeviceLink().enabled||await exists('stop.request'))return;
   panelChild=spawn('powershell.exe',['-NoProfile','-ExecutionPolicy','Bypass','-File',fileURLToPath(new URL('../mhub-community-assistant/scripts/watch-panel.ps1',root)),'-NodePath',process.execPath],{cwd:fileURLToPath(root),windowsHide:true,stdio:['ignore','inherit','inherit']});
   panelChild.once('error',()=>{panelChild=null;});panelChild.once('exit',()=>{panelChild=null;});panelState='starting';
  }finally{panelChecking=false;}
