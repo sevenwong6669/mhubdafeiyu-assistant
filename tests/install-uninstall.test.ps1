@@ -109,11 +109,14 @@ function Assert-GuardFailureStopsUninstall {
     Remove-Item -LiteralPath $guardFile
 }
 
-function Assert-DeviceWorkersExitBeforePanel {
+function Assert-DeviceWorkersExitBeforePanel([switch]$Unconfirmed) {
     $guardFile = Join-Path $state 'panel-guard.json'
     $instanceFile = Join-Path $state 'panel-instance.json'
     $supervisorFile = Join-Path $sync 'supervisor.pid'
     $controllerFile = Join-Path $sync 'run.pid'
+    $voiceFile = Join-Path $sync 'voice-chat/server.pid'
+    $pendingFile = Join-Path $sync 'shutdown-pending.json'
+    $receiptFile = Join-Path $sync 'device-link-release.json'
     $panelScript = Join-Path $panel 'scripts/start-panel.mjs'
     $panelGuard = Join-Path $panel 'scripts/watch-panel.ps1'
     $processes = @{
@@ -121,6 +124,7 @@ function Assert-DeviceWorkersExitBeforePanel {
         43221 = [pscustomobject]@{ ProcessId = 43221; Name = 'node.exe'; CommandLine = ('node.exe "' + (Join-Path $sync 'optimized.mjs') + '" --hold') }
         43222 = [pscustomobject]@{ ProcessId = 43222; Name = 'powershell.exe'; CommandLine = ('powershell.exe -File "' + $panelGuard + '"') }
         43223 = [pscustomobject]@{ ProcessId = 43223; Name = 'node.exe'; CommandLine = 'node.exe scripts/start-panel.mjs' }
+        43225 = [pscustomobject]@{ ProcessId = 43225; Name = 'node.exe'; CommandLine = ('node.exe "' + (Join-Path $sync 'voice-chat/server.mjs') + '"') }
     }
     $order = [Collections.Generic.List[string]]::new()
     function Get-CimInstance {
@@ -134,7 +138,13 @@ function Assert-DeviceWorkersExitBeforePanel {
         $processes[$Id]
     }
     function Invoke-RestMethod {
-        param([string]$Uri, [int]$TimeoutSec)
+        param([string]$Uri, [int]$TimeoutSec, [int]$MaximumRedirection, [string]$Method, [string]$ContentType, [string]$Body)
+        if ($Uri -eq 'http://127.0.0.1:18780/status') { return @{ pid = 43225 } }
+        if ($Uri -eq 'http://127.0.0.1:18780/shutdown') {
+            Assert-That ($Method -eq 'Post' -and ($Body | ConvertFrom-Json).expectedPid -eq 43225) 'Voice shutdown did not name the verified process.'
+            $order.Add('request:voice')
+            return @{ ok = $true }
+        }
         Assert-That ($Uri -eq 'http://127.0.0.1:18782/health') 'Relative panel was not verified through its health endpoint.'
         return @{ service = 'dafeiyu-panel'; pid = 43223; instanceId = 'fixture-panel' }
     }
@@ -152,18 +162,145 @@ function Assert-DeviceWorkersExitBeforePanel {
             Assert-That ($Id -contains 43220 -and $Id -contains 43221) 'Uninstall did not wait for both device workers.'
             Assert-That ([IO.File]::ReadAllText((Join-Path $sync 'stop.request')) -eq 'stop') 'Uninstall did not request restoration before waiting.'
             $order.Add('release:sync')
+            $now = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+            if ($Unconfirmed) {
+                [IO.File]::WriteAllText($pendingFile, (@{pid=43221; at=$now; reason='release-timeout'} | ConvertTo-Json), $utf8)
+            } else {
+                [IO.File]::WriteAllText($receiptFile, (@{pid=43221; at=$now; issues=@()} | ConvertTo-Json), $utf8)
+            }
             $processes.Remove(43220)
             $processes.Remove(43221)
+        }
+        if ($Id -contains 43225) {
+            Assert-That ($order -contains 'request:voice') 'Uninstall did not request voice cleanup before waiting.'
+            $order.Add('release:voice')
+            $processes.Remove(43225)
         }
     }
 
     [IO.File]::WriteAllText($supervisorFile, '43220', $utf8)
     [IO.File]::WriteAllText($controllerFile, '43221', $utf8)
+    [IO.File]::WriteAllText($voiceFile, '43225', $utf8)
     [IO.File]::WriteAllText($guardFile, '{"pid":43222,"serverPid":0}', $utf8)
     [IO.File]::WriteAllText($instanceFile, (@{pid=43223; script=$panelScript; instanceId='fixture-panel'} | ConvertTo-Json), $utf8)
+    if ($Unconfirmed) {
+        for ($attempt = 0; $attempt -lt 2; $attempt++) {
+            $failure = $null
+            try { $null = Invoke-Uninstall } catch { $failure = $_ }
+            Assert-That ($failure.Exception.Message -like '*Device restoration has not been confirmed*') 'Exited processes bypassed device restoration on retry.'
+            Assert-That ([IO.File]::ReadAllText($profileJson) -ceq $installedProfile) 'Unconfirmed restoration changed the Harness registration.'
+            Assert-That (Test-Path -LiteralPath $index) 'Unconfirmed restoration removed the Harness module.'
+        }
+        Assert-That (($order -join ',') -eq 'release:sync') 'Unconfirmed restoration stopped the panel or voice service.'
+        $pendingAt = ([IO.File]::ReadAllText($pendingFile) | ConvertFrom-Json).at
+        [IO.File]::WriteAllText($receiptFile, (@{pid=43221; at=$pendingAt + 1; issues=@()} | ConvertTo-Json), $utf8)
+    }
     $null = Invoke-Uninstall
-    Assert-That (($order -join ',') -eq 'release:sync,stop:43222,stop:43223') 'Uninstall did not release sync before stopping the guard and the relative-path panel.'
-    foreach ($file in @($guardFile, $instanceFile, $supervisorFile, $controllerFile)) { Remove-Item -LiteralPath $file }
+    Assert-That (($order -join ',') -eq 'release:sync,request:voice,release:voice,stop:43222,stop:43223') 'Uninstall did not release sync and voice before stopping the panel.'
+    foreach ($file in @($guardFile, $instanceFile, $supervisorFile, $controllerFile, $voiceFile, $pendingFile, $receiptFile)) {
+        if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file }
+    }
+}
+
+function Assert-UninstallPreservesConcurrentHostWrites {
+    $updated = $installedProfile | ConvertFrom-Json
+    $updated.dependencies | Add-Member -NotePropertyName 'unrelated-plugin' -NotePropertyValue '3.1.0'
+    $updated.dsh.profile.bundles += 'unrelated-plugin'
+    $updatedProfile = $updated | ConvertTo-Json -Depth 30
+    $updatedPatch = $installedPatch + "- id: unrelated-plugin`n  name: unrelated-plugin`n"
+    function Get-Process {
+        [CmdletBinding()]
+        param([string]$Name, [int]$Id)
+        if ($Name -eq 'DeepSeek Harness') {
+            [IO.File]::WriteAllText($profileJson, $updatedProfile, $utf8)
+            [IO.File]::WriteAllText($profilePatch, $updatedPatch, $utf8)
+        }
+    }
+    $failure = $null
+    try { $null = Invoke-Uninstall } catch { $failure = $_ }
+    Assert-That ($failure.Exception.Message -like '*Configuration changed during the operation*') 'Uninstall accepted a stale host snapshot.'
+    Assert-That ([IO.File]::ReadAllText($profileJson) -ceq $updatedProfile) 'Uninstall overwrote concurrent dependency and bundle changes.'
+    Assert-That ([IO.File]::ReadAllText($profilePatch) -ceq $updatedPatch) 'Uninstall overwrote a concurrent patch.'
+    Assert-That ([IO.File]::ReadAllText($index) -ceq $installedEntry) 'Uninstall removed the module after a host conflict.'
+}
+
+function Assert-ManualDeviceRestoreConfirmation {
+    $pendingFile = Join-Path $sync 'shutdown-pending.json'
+    $at = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+    [IO.File]::WriteAllText($pendingFile, (@{pid=43221; at=$at; reason='release-timeout'} | ConvertTo-Json), $utf8)
+    $failure = $null
+    try { $null = Invoke-Uninstall } catch { $failure = $_ }
+    Assert-That ($failure.Exception.Message -like '*Device restoration has not been confirmed*') 'Uninstall ignored an earlier unresolved recovery record.'
+    $null = & $uninstall -DshRoot $dshRoot -ConfirmDeviceRestored
+    Assert-HarnessUnlinked
+    Assert-That (Test-Path -LiteralPath $pendingFile) 'Confirmation discarded the recovery diagnostics.'
+
+    Reset-HarnessRegistration
+    [IO.File]::WriteAllText($pendingFile, (@{pid=43221; at=$at + 1; reason='release-timeout'} | ConvertTo-Json), $utf8)
+    $failure = $null
+    try { $null = Invoke-Uninstall } catch { $failure = $_ }
+    Assert-That ($failure.Exception.Message -like '*Device restoration has not been confirmed*') 'An earlier confirmation applied to a newer recovery problem.'
+    Assert-That (Test-Path -LiteralPath $index) 'A new recovery problem did not preserve the module.'
+    Remove-Item -LiteralPath $pendingFile
+}
+
+function Assert-InstallSettingsReadAfterDesktopPreparation {
+    $settingsUnderTest = $settings
+    function npm.cmd {
+        $current = [IO.File]::ReadAllText($settingsUnderTest) | ConvertFrom-Json
+        $current | Add-Member -NotePropertyName 'addedDuringDesktopSetup' -NotePropertyValue @{ enabled=$true }
+        [IO.File]::WriteAllText($settingsUnderTest, ($current | ConvertTo-Json -Depth 8), $utf8)
+        $electron = Join-Path $panel 'live2d-pet/node_modules/electron'
+        $null = [IO.Directory]::CreateDirectory((Join-Path $electron 'dist'))
+        [IO.File]::WriteAllText((Join-Path $electron 'install.js'), '// fixture', $utf8)
+        [IO.File]::WriteAllText((Join-Path $electron 'dist/electron.exe'), 'fixture', $utf8)
+        $global:LASTEXITCODE = 0
+    }
+    $null = & $install -PythonPath $PythonPath -MhubPath $mhub -PrepareDesktop
+    $current = [IO.File]::ReadAllText($settings) | ConvertFrom-Json
+    Assert-That ($current.addedDuringDesktopSetup.enabled -eq $true) 'Installation lost settings written during dependency preparation.'
+}
+
+function Assert-InstallPreservesConcurrentHostRecord {
+    $race = @{ written=$false }
+    $recordUnderTest = $record
+    $concurrentRecord = '{"hosts":["aurabot"],"source":"concurrent installation"}'
+    function New-Item {
+        [CmdletBinding()]
+        param([string]$Path, [string]$ItemType, [switch]$Force)
+        if ($Path -eq $state -and !$race.written) {
+            $race.written = $true
+            $null = [IO.Directory]::CreateDirectory($auraModule)
+            $auraUri = ([uri](Join-Path $panel 'aurabot-adapter.mjs')).AbsoluteUri | ConvertTo-Json -Compress
+            [IO.File]::WriteAllText((Join-Path $auraModule 'index.mjs'), "export {default} from $auraUri;", $utf8)
+            [IO.File]::WriteAllText($recordUnderTest, $concurrentRecord, $utf8)
+        }
+        Microsoft.PowerShell.Management\New-Item @PSBoundParameters
+    }
+    $failure = $null
+    try { $null = & $install -PythonPath $PythonPath -MhubPath $mhub -LinkHarness } catch { $failure = $_ }
+    Assert-That ($race.written -and $failure.Exception.Message -like '*Configuration changed during the operation*') "Install did not detect a concurrent host record write: $($failure.Exception.Message)"
+    Assert-That ([IO.File]::ReadAllText($record) -ceq $concurrentRecord) 'Install overwrote the concurrent AuraBot record.'
+    Assert-That (!(Test-Path -LiteralPath $module) -and (Test-Path -LiteralPath $auraModule)) 'Rollback removed the wrong module.'
+    $null = & $install -PythonPath $PythonPath -MhubPath $mhub -LinkHarness
+    $final = [IO.File]::ReadAllText($record) | ConvertFrom-Json
+    Assert-That ('harness' -in $final.hosts -and 'aurabot' -in $final.hosts) 'Retry lost a linked host.'
+    $null = Invoke-Uninstall
+    Assert-HarnessUnlinked
+    Assert-That (!(Test-Path -LiteralPath $auraModule)) 'Combined host record prevented AuraBot cleanup.'
+}
+
+function Assert-SeparateInstallationsKeepBothHosts {
+    Remove-Item -LiteralPath $record
+    $null = & $install -PythonPath $PythonPath -MhubPath $mhub -LinkAuraBot
+    $first = [IO.File]::ReadAllText($record) | ConvertFrom-Json
+    Assert-That (($first.hosts -join ',') -eq 'aurabot') 'The first installation did not record only AuraBot.'
+    $null = & $install -PythonPath $PythonPath -MhubPath $mhub -LinkHarness
+    $second = [IO.File]::ReadAllText($record) | ConvertFrom-Json
+    Assert-That ('harness' -in $second.hosts -and 'aurabot' -in $second.hosts) 'The second installation did not retain both hosts.'
+    $null = Invoke-Uninstall
+    Assert-HarnessUnlinked
+    Assert-That (!(Test-Path -LiteralPath $auraModule)) 'Uninstall left the separately installed AuraBot module.'
 }
 
 function Assert-RestrictedCimUninstall {
@@ -203,7 +340,7 @@ function Assert-LockedRecordRollback([IO.FileShare]$Sharing) {
     Assert-That ([IO.File]::ReadAllText($profileJson) -ceq $originalProfile) 'Failed install did not restore the Harness profile.'
     Assert-That ([IO.File]::ReadAllText($profilePatch) -ceq $originalPatch) 'Failed install did not restore the Harness patch.'
     Assert-That (!(Test-Path -LiteralPath $module) -and !(Test-Path -LiteralPath $auraModule)) 'Failed install left a new module.'
-    Assert-That (!@(Get-ChildItem -LiteralPath $state -Filter 'install-record.json.install-*').Count) 'Failed install left a temporary record.'
+    Assert-That (!@(Get-ChildItem -LiteralPath $state -Filter 'install-record.json.change-*').Count) 'Failed install left a temporary record.'
     "PASS: installation rolled back with FileShare.$Sharing"
 }
 
@@ -298,7 +435,17 @@ try {
 
     Assert-DeviceWorkersExitBeforePanel
     Assert-HarnessUnlinked
-    'PASS: device workers exit before the guard and relative-path panel'
+    'PASS: device and voice workers exit before the guard and relative-path panel'
+    Reset-HarnessRegistration
+    Assert-DeviceWorkersExitBeforePanel -Unconfirmed
+    Assert-HarnessUnlinked
+    'PASS: pending device restoration blocks retries until a matching receipt arrives'
+    Reset-HarnessRegistration
+    Assert-ManualDeviceRestoreConfirmation
+    'PASS: manual confirmation applies only to the reviewed device recovery record'
+    Reset-HarnessRegistration
+    Assert-UninstallPreservesConcurrentHostWrites
+    'PASS: uninstall preserves concurrent host changes and the module'
     Reset-HarnessRegistration
     Assert-RestrictedCimUninstall
     'PASS: restricted CIM permits idle cleanup and preserves an unverified live guard'
@@ -312,6 +459,12 @@ try {
     [IO.File]::WriteAllText($profilePatch, $originalPatch, $utf8)
     Assert-LockedRecordRollback ([IO.FileShare]::None)
     Assert-LockedRecordRollback ([IO.FileShare]::Read)
+    Assert-InstallSettingsReadAfterDesktopPreparation
+    'PASS: installation retains settings written during desktop dependency preparation'
+    Assert-InstallPreservesConcurrentHostRecord
+    'PASS: installation preserves a concurrent AuraBot record and can retry the Harness link'
+    Assert-SeparateInstallationsKeepBothHosts
+    'PASS: separate AuraBot and Harness installations keep both host entries'
 
     # Simulate another installer changing all three host entries while pip runs.
     $pipStub = @'

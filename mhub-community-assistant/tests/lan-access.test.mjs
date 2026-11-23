@@ -27,6 +27,7 @@ test('legacy LAN clients see the login form and need a session for panel assets 
     const response=await authorize(request(route),peer);
     assert.equal(response.status,200);
     assert.match(response.headers.get('content-type'),/^text\/html/);
+    assert.equal(response.headers.get('referrer-policy'),'same-origin');
     assert.match(await response.text(),/<form method="post" action="\/lan\/login">/);
   }
   const asset='/api/mhub-community/panel.js',state='/api/mhub-community/state';
@@ -36,7 +37,7 @@ test('legacy LAN clients see the login form and need a session for panel assets 
   const refresh=request('/api/mhub-community/devices/refresh',{method:'POST'});
   assert.equal((await authorize(refresh,peer)).status,401);
 
-  const login=await authorize(request('/lan/login',{method:'POST',body:new URLSearchParams({key})}),peer);
+  const login=await authorize(request('/lan/login',{method:'POST',headers:{origin:'http://192.168.20.4:18782'},body:new URLSearchParams({key})}),peer);
   assert.equal(login.status,303);
   assert.equal(login.headers.get('location'),panel);
   const cookie=login.headers.get('set-cookie').split(';')[0];

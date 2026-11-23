@@ -1,5 +1,6 @@
 ﻿param(
     [switch]$RemoveVenv,
+    [switch]$ConfirmDeviceRestored,
     [string]$DshRoot = (Join-Path $env:USERPROFILE '.dsh')
 )
 $ErrorActionPreference = 'Stop'
@@ -19,6 +20,7 @@ $expectedPanel = $panel.Replace('\','/')
 $expectedState = (Join-Path $panel 'state').Replace('\','/')
 $scriptDir = Join-Path $panel 'scripts'
 $utf8 = [Text.UTF8Encoding]::new($false)
+. (Join-Path $scriptDir 'local-text-transaction.ps1')
 
 $sync = Join-Path $root 'harness-mhub-sync'
 $state = Join-Path $panel 'state'
@@ -124,33 +126,119 @@ function Stop-InstallProcesses([string]$ScriptPath, [int[]]$RecordedIds, [string
     }
 }
 
+function Read-DeviceRecoveryFile([string]$Path) {
+    $snapshot = Read-LocalTextSnapshot $Path
+    $record = if ($snapshot.existed) { ConvertFrom-Json -InputObject $snapshot.text } else { $null }
+    return @{snapshot = $snapshot; record = $record}
+}
+
+function Save-DeviceRecoveryState([string]$Path, $Expected, $Requests, $Confirmation) {
+    $null = [IO.Directory]::CreateDirectory($state)
+    $change = @{
+        path = $Path
+        expected = $Expected
+        content = (@{requests = @($Requests); confirmation = $Confirmation} | ConvertTo-Json -Depth 5)
+        backup = "$Path.backup-$([guid]::NewGuid().ToString('N'))"
+    }
+    try { Write-CheckedText $change }
+    catch { Undo-CheckedText $change; throw }
+    [IO.File]::Delete($change.backup)
+    return $change.written
+}
+
+function Test-DeviceReleaseReceipt($Receipt, $Request) {
+    return ($Receipt -and $Receipt.issues -is [Array] -and $Receipt.issues.Count -eq 0 -and
+        $Receipt.pid -gt 0 -and $Receipt.pid -eq $Request.pid -and
+        $Request.at -gt 0 -and $Receipt.at -ge $Request.at)
+}
+
 function Stop-DeviceSync {
     if (!(Test-Path -LiteralPath $sync -PathType Container)) { return }
-    # The controller observes the same request as the panel's Stop action and
-    # restores its previous scene before exiting. Never force it from here.
-    $requestedAt = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
-    [IO.File]::WriteAllText((Join-Path $sync 'stop.request'), 'stop', $utf8)
+    $pendingPath = Join-Path $sync 'shutdown-pending.json'
+    $receiptPath = Join-Path $sync 'device-link-release.json'
+    $journalPath = Join-Path $state 'uninstall-device-recovery.json'
+    $journal = Read-DeviceRecoveryFile $journalPath
+    $requests = @($journal.record.requests | Where-Object { $_ })
+    $confirmation = $journal.record.confirmation
+    $pendingBefore = Read-DeviceRecoveryFile $pendingPath
+    $receiptBefore = Read-DeviceRecoveryFile $receiptPath
+
     $supervisor = Join-Path $sync 'supervisor.mjs'
     $controller = Join-Path $sync 'optimized.mjs'
     $supervisorStatus = Read-ProcessRecord (Join-Path $sync 'supervisor-status.json')
     $controllerStatus = Read-ProcessRecord (Join-Path $sync 'controller-health.json')
     $supervisorIds = @((Read-ProcessRecord (Join-Path $sync 'supervisor.pid')), $supervisorStatus.pid)
     $controllerIds = @((Read-ProcessRecord (Join-Path $sync 'run.pid')), $supervisorStatus.childPid, $controllerStatus.pid)
-    $owned = @(
-        Get-OwnedProcessIds $supervisor $supervisorIds
-        Get-OwnedProcessIds $controller $controllerIds
-    ) | Select-Object -Unique
-    if ($owned) {
+    $runningControllers = @(Get-OwnedProcessIds $controller $controllerIds)
+    $owned = @(@(Get-OwnedProcessIds $supervisor $supervisorIds) + $runningControllers | Select-Object -Unique)
+    $requestedAt = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+    if ($runningControllers.Count) {
+        foreach ($controllerId in $runningControllers) {
+            if ($controllerId -notin @($requests.pid)) { $requests += @{pid = $controllerId; at = $requestedAt} }
+        }
+        # Record the restoration expectation before requesting process exit.
+        $journal.snapshot = Save-DeviceRecoveryState $journalPath $journal.snapshot $requests $confirmation
+    }
+    [IO.File]::WriteAllText((Join-Path $sync 'stop.request'), 'stop', $utf8)
+    if ($owned.Count) {
         Write-Host 'Waiting for device sync to restore the previous scene and exit.'
         # Match the observation budget in harness-mhub-sync/release-policy.mjs.
-        $null = Wait-Process -Id @($owned) -Timeout 180 -ErrorAction SilentlyContinue
-        $pending = Read-ProcessRecord (Join-Path $sync 'shutdown-pending.json')
-        if ($pending.at -ge $requestedAt -and $pending.pid -in @($owned)) {
-            throw 'Device state restoration needs review. Check shutdown-pending.json before retrying uninstall.'
-        }
+        $null = Wait-Process -Id $owned -Timeout 180 -ErrorAction SilentlyContinue
     }
     if (@(Get-OwnedProcessIds $supervisor $supervisorIds).Count -or @(Get-OwnedProcessIds $controller $controllerIds).Count) {
         throw 'Device sync is still releasing control. Wait for the supervisor and controller to exit, then retry.'
+    }
+
+    $pending = Read-DeviceRecoveryFile $pendingPath
+    $receipt = Read-DeviceRecoveryFile $receiptPath
+    $waiting = @($requests | Where-Object { !(Test-DeviceReleaseReceipt $receipt.record $_) })
+    $unresolved = ($pending.snapshot.existed -and !(Test-DeviceReleaseReceipt $receipt.record $pending.record)) -or
+        ($receipt.snapshot.existed -and (!$receipt.record -or $receipt.record.issues -isnot [Array] -or $receipt.record.issues.Count -gt 0))
+    $matchingConfirmation = $confirmation -and $confirmation.pendingDigest -ceq $pending.snapshot.digest -and
+        $confirmation.receiptDigest -ceq $receipt.snapshot.digest
+    $recordConfirmation = $false
+    if ($waiting.Count -or ($unresolved -and !$matchingConfirmation)) {
+        if (!$ConfirmDeviceRestored -or $owned.Count -or
+            $pending.snapshot.digest -cne $pendingBefore.snapshot.digest -or
+            $receipt.snapshot.digest -cne $receiptBefore.snapshot.digest) {
+            throw 'Device restoration has not been confirmed. Review shutdown-pending.json and device-link-release.json, then retry. Use -ConfirmDeviceRestored only after verifying the devices with sync stopped.'
+        }
+        $confirmation = @{
+            pendingDigest = $pending.snapshot.digest
+            receiptDigest = $receipt.snapshot.digest
+            at = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+        }
+        $recordConfirmation = $true
+    }
+    if ($requests.Count -or $recordConfirmation) {
+        $null = Save-DeviceRecoveryState $journalPath $journal.snapshot @() $confirmation
+    }
+}
+
+function Stop-VoiceService {
+    $voiceRoot = Join-Path $sync 'voice-chat'
+    $voiceScript = Join-Path $voiceRoot 'server.mjs'
+    $recordedId = Read-ProcessRecord (Join-Path $voiceRoot 'server.pid')
+    $owned = @(Get-OwnedProcessIds $voiceScript @($recordedId))
+    if (!$owned.Count) { return }
+    $voiceConfig = Read-ProcessRecord (Join-Path $voiceRoot 'config.json')
+    $voicePort = 0
+    if ($owned.Count -ne 1 -or ![int]::TryParse([string]$voiceConfig.port, [ref]$voicePort) -or
+        $voicePort -lt 1 -or $voicePort -gt 65535) { throw 'Cannot identify the local voice service endpoint. Stop voice manually and retry.' }
+    $targetId = $owned[0]
+    try {
+        $status = Invoke-RestMethod "http://127.0.0.1:$voicePort/status" -TimeoutSec 4 -MaximumRedirection 0
+        if ($status.pid -ne $targetId) { throw 'The local voice listener does not match the verified process.' }
+        $request = @{
+            Method = 'Post'; ContentType = 'application/json'; TimeoutSec = 4; MaximumRedirection = 0
+            Body = (@{expectedPid = $targetId} | ConvertTo-Json -Compress)
+        }
+        $shutdown = Invoke-RestMethod "http://127.0.0.1:$voicePort/shutdown" @request
+        if ($shutdown.ok -ne $true) { throw 'The voice service did not acknowledge shutdown.' }
+    } catch { throw "Could not shut down voice pid ${targetId}: $($_.Exception.Message) Stop voice manually and retry." }
+    $null = Wait-Process -Id $targetId -Timeout 45 -ErrorAction SilentlyContinue
+    if (@(Get-OwnedProcessIds $voiceScript @($targetId, $recordedId)).Count) {
+        throw 'The voice service is still cleaning up audio. Wait for it to exit and retry.'
     }
 }
 
@@ -164,39 +252,30 @@ function Test-OwnedModule([string]$Directory, [string]$ScriptName) {
     return ([IO.File]::ReadAllText($indexFile) -match $pattern)
 }
 
-function Update-HarnessRegistration($Changes) {
-    $applied = @()
+function Update-HarnessRegistration($Changes, $ExpectedFiles) {
     try {
-        foreach ($change in $Changes) {
-            $path = $change.path
-            $id = [guid]::NewGuid().ToString('N')
-            $backup = "$path.backup-$id"
-            $temp = "$path.uninstall-$id.tmp"
-            try {
-                [IO.File]::WriteAllText($temp, $change.content, $utf8)
-                [IO.File]::Replace($temp, $path, $backup)
-                $applied += @{path = $path; backup = $backup}
-            } finally {
-                [IO.File]::Delete($temp)
-            }
-        }
+        foreach ($path in $ExpectedFiles.Keys) { Assert-LocalTextSnapshot $path $ExpectedFiles[$path] }
+        foreach ($change in $Changes) { Write-CheckedText $change }
+        foreach ($change in $Changes) { $ExpectedFiles[$change.path] = $change.written }
+        foreach ($path in $ExpectedFiles.Keys) { Assert-LocalTextSnapshot $path $ExpectedFiles[$path] }
     } catch {
         $failure = $_
         $rollbackErrors = @()
-        for ($i = $applied.Count - 1; $i -ge 0; $i--) {
-            try { Copy-Item -LiteralPath $applied[$i].backup -Destination $applied[$i].path -Force }
-            catch { $rollbackErrors += "$($applied[$i].path): $($_.Exception.Message)" }
+        for ($i = $Changes.Count - 1; $i -ge 0; $i--) {
+            try { Undo-CheckedText $Changes[$i] }
+            catch { $rollbackErrors += "$($Changes[$i].path): $($_.Exception.Message)" }
         }
         if ($rollbackErrors.Count) {
             throw "Could not update the Harness registration: $($failure.Exception.Message). Rollback needs review: $($rollbackErrors -join '; ')"
         }
         throw $failure
     }
-    foreach ($change in $applied) { "Updated $($change.path); backup: $($change.backup)" }
+    foreach ($change in $Changes) { "Updated $($change.path); backup: $($change.backup)" }
 }
 
 # Wait for anything that can relaunch the panel, then stop its guard and server.
 Stop-DeviceSync
+Stop-VoiceService
 $guard = Read-ProcessRecord (Join-Path $state 'panel-guard.json')
 $instance = Read-ProcessRecord (Join-Path $state 'panel-instance.json')
 Stop-InstallProcesses (Join-Path $scriptDir 'watch-panel.ps1') @($guard.pid) 'Panel guard'
@@ -221,15 +300,17 @@ if ($record -and $record.PSObject.Properties['hosts']) {
 if ($linkedHere.harness) {
     $conflicts = @()
     $package = $null; $dependency = $null
-    if (Test-Path -LiteralPath $profileJson -PathType Leaf) {
-        $package = Get-Content -LiteralPath $profileJson -Raw -Encoding UTF8 | ConvertFrom-Json
+    $profileSnapshot = Read-LocalTextSnapshot $profileJson
+    $patchSnapshot = Read-LocalTextSnapshot $profilePatch
+    if ($profileSnapshot.existed) {
+        $package = ConvertFrom-Json -InputObject $profileSnapshot.text
         if ($package.dependencies) { $dependency = $package.dependencies.PSObject.Properties[$harnessName] }
         if ($dependency -and [string]$dependency.Value -ne ('file:' + $expectedPanel)) { $conflicts += 'profile dependency' }
     }
 
     $patchMatch = $null
-    if (Test-Path -LiteralPath $profilePatch -PathType Leaf) {
-        $patch = [IO.File]::ReadAllText($profilePatch)
+    if ($patchSnapshot.existed) {
+        $patch = $patchSnapshot.text
         $marker = '(?m)(?:^[ \t]*(?:-[ \t]+)?|[{,][ \t]*)(?:id:[ \t]*["'']?mhub-community-assistant|name:[ \t]*["'']?dsh-mhub-community-v11)["'']?(?=[ \t\r\n#,}]|\z)'
         $markers = [regex]::Matches($patch, $marker)
         if ($markers.Count) {
@@ -247,6 +328,8 @@ if ($linkedHere.harness) {
     }
 
     $moduleExists = Test-Path -LiteralPath $module
+    $entryPath = Join-Path $module 'index.mjs'
+    $entrySnapshot = Read-LocalTextSnapshot $entryPath
     if ($moduleExists -and !(Test-OwnedModule $module 'native-host.mjs')) { $conflicts += 'module entry' }
 
     if ($conflicts.Count) {
@@ -260,12 +343,12 @@ if ($linkedHere.harness) {
             if ($bundles -contains $harnessName) {
                 $package.dsh.profile.bundles = @($bundles | Where-Object { $_ -ne $harnessName })
             }
-            $changes += @{path = $profileJson; content = ($package | ConvertTo-Json -Depth 30)}
+            $changes += @{path = $profileJson; content = ($package | ConvertTo-Json -Depth 30); expected = $profileSnapshot; backup = "$profileJson.backup-$([guid]::NewGuid().ToString('N'))"}
         }
         if ($patchMatch.Success) {
-            $changes += @{path = $profilePatch; content = $patch.Remove($patchMatch.Index, $patchMatch.Length)}
+            $changes += @{path = $profilePatch; content = $patch.Remove($patchMatch.Index, $patchMatch.Length); expected = $patchSnapshot; backup = "$profilePatch.backup-$([guid]::NewGuid().ToString('N'))"}
         }
-        Update-HarnessRegistration $changes
+        Update-HarnessRegistration $changes @{$profileJson = $profileSnapshot; $profilePatch = $patchSnapshot; $entryPath = $entrySnapshot}
         if ($moduleExists) {
             Remove-Item -LiteralPath $module -Recurse -Force
             "Removed module: $module"
@@ -285,4 +368,4 @@ if ($RemoveVenv) {
     $venv = Join-Path $root '.venv'
     if (Test-Path -LiteralPath $venv) { Remove-Item -LiteralPath $venv -Recurse -Force; "Removed Python environment: $venv" }
 }
-'Done. User state under mhub-community-assistant/state, runtime.settings.json, device backups and wallpapers were left untouched.'
+'Done. User settings, device backups and wallpapers were preserved.'

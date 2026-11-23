@@ -864,7 +864,7 @@ try{
   if(!handoff)await balanceBar.ambient.close().then(result=>{if(result?.pendingRestore)reportReleaseError('balance-native-restore-error',Error('键盘氛围灯暂未确认恢复'));}).catch(error=>reportReleaseError('balance-native-restore-error',error));
   try{const host=JSON.parse(await fs.readFile(new URL('pet-hotkey-status.json',ROOT),'utf8'));if(host.parent===process.pid)await fs.writeFile(new URL('pet-hotkey-status.json',ROOT),JSON.stringify({...host,ready:false,stopped:true,observedAt:Date.now()}));}catch{}
   await stopNumbers();
-  if(owned&&!manual&&!handoff){try{const strip=await balanceBar.close(expected);if(strip.changed)expected=strip.signature;}catch(error){log('balance-strip-cleanup-error',{reason:error.message});}}
+  if(owned&&!manual&&!handoff){try{const strip=await balanceBar.close(expected);if(strip.changed)expected=strip.signature;}catch(error){reportReleaseError('balance-strip-cleanup-error',error);}}
   await fs.rm(gameFlag,{force:true});
   if(!handoff){
   if(!manual&&screenBackup&&changedImage){
@@ -878,7 +878,8 @@ try{
     }catch(error){reportReleaseError('restore-error',error);}
   }
   if(snapshot&&screenBackup)await save({phase:'stopped',finishedAt:new Date().toISOString(),manual});
-  if(!readDeviceLink().enabled)await writeJson(new URL('device-link-release.json',ROOT),{at:Date.now(),issues:releaseIssues.map(message=>message.split(/\r?\n/,1)[0].slice(0,220))}).catch(()=>{});
+  await writeJson(new URL('device-link-release.json',ROOT),{pid:process.pid,at:Date.now(),issues:releaseIssues.map(message=>message.split(/\r?\n/,1)[0].slice(0,220))})
+    .catch(error=>log('device-release-receipt-error',{reason:error.message}));
   await fs.rm(pidFile,{force:true});
   // The standalone service owns QQ and device requests. Do not resurrect the
   // obsolete NAS writer after this controller has released its hardware.

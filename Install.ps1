@@ -18,7 +18,7 @@ $sync = Join-Path $root 'harness-mhub-sync'
 $utf8 = [Text.UTF8Encoding]::new($false)
 $installBackup = $null
 $savedFiles = @{}
-$writtenFiles = [Collections.Generic.List[string]]::new()
+$fileChanges = [Collections.Generic.List[hashtable]]::new()
 $createdModules = [Collections.Generic.List[string]]::new()
 
 if ($env:OS -ne 'Windows_NT' -or -not [Environment]::Is64BitOperatingSystem) { throw 'Windows x64 is required.' }
@@ -48,55 +48,26 @@ function Resolve-File([string]$Path) {
 }
 
 function Write-LocalText([string]$Path, [string]$Content, $Expected) {
-    if (!$savedFiles.ContainsKey($Path)) {
-        if (!$script:installBackup) {
-            $script:installBackup = Join-Path $root ('install-backup-' + [guid]::NewGuid().ToString('N'))
-            $null = New-Item -ItemType Directory -Path $script:installBackup
-        }
-        $snapshot = Join-Path $script:installBackup ($savedFiles.Count.ToString() + '.original')
-        $existed = [IO.File]::Exists($Path)
-        if ($existed) { Copy-Item -LiteralPath $Path -Destination $snapshot }
-        $savedFiles[$Path] = @{existed=$existed; backup=$snapshot}
-        [IO.File]::WriteAllText((Join-Path $script:installBackup 'files.json'), ($savedFiles | ConvertTo-Json -Depth 5), $utf8)
+    if (!$Expected) { $Expected = Read-LocalTextSnapshot $Path }
+    if (!$script:installBackup) {
+        $script:installBackup = Join-Path $root ('install-backup-' + [guid]::NewGuid().ToString('N'))
+        $null = New-Item -ItemType Directory -Path $script:installBackup
     }
-    if ($Expected -and ($savedFiles[$Path].existed -ne $Expected.existed -or
-            ($Expected.existed -and [IO.File]::ReadAllText($savedFiles[$Path].backup) -cne $Expected.text))) {
-        throw "Harness changed $Path before it could be backed up. Close Harness and retry."
-    }
-    $temp = "$Path.install-" + [guid]::NewGuid().ToString('N') + '.tmp'
-    $previous = "$temp.previous"
-    try {
-        [IO.File]::WriteAllText($temp, $Content, $utf8)
-        if ($Expected -and ($Expected.existed -ne [IO.File]::Exists($Path) -or
-                ($Expected.existed -and [IO.File]::ReadAllText($Path) -cne $Expected.text))) {
-            throw "Harness changed $Path during installation. Close Harness and retry."
-        }
-        if ($savedFiles[$Path].existed -or $writtenFiles.Contains($Path)) {
-            [IO.File]::Replace($temp, $Path, $previous)
-        } else {
-            [IO.File]::Move($temp, $Path)
-        }
-        $writtenFiles.Add($Path)
-        if ($Expected) {
-            $savedFiles[$Path].writtenText = $Content
-            if ($Expected.existed -and [IO.File]::ReadAllText($previous) -cne $Expected.text) {
-                $savedFiles[$Path].backup = $previous
-                throw "Harness changed $Path during installation. Close Harness and retry."
-            }
-        }
-        [IO.File]::Delete($previous)
-    } finally {
-        [IO.File]::Delete($temp)
-    }
+    $backup = Join-Path $script:installBackup ($fileChanges.Count.ToString() + '.original')
+    $change = @{path = $Path; content = $Content; expected = $Expected; backup = $backup}
+    $savedFiles[$Path] = @{existed = $Expected.existed; backup = $backup}
+    [IO.File]::WriteAllText((Join-Path $script:installBackup 'files.json'), ($savedFiles | ConvertTo-Json -Depth 5), $utf8)
+    $fileChanges.Add($change)
+    Write-CheckedText $change
 }
 
 function Read-HarnessRegistration {
     if (Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue) { throw 'Close DeepSeek Harness before linking its profile.' }
     if (!(Test-Path -LiteralPath $profileJson -PathType Leaf)) { throw 'Open and initialize DeepSeek Harness first.' }
-    $profileText = [IO.File]::ReadAllText($profileJson)
-    $package = ConvertFrom-Json -InputObject $profileText
-    $patchExists = Test-Path -LiteralPath $profilePatch -PathType Leaf
-    $patchText = if ($patchExists) { [IO.File]::ReadAllText($profilePatch) } else { '' }
+    $profileSnapshot = Read-LocalTextSnapshot $profileJson
+    $patchSnapshot = Read-LocalTextSnapshot $profilePatch
+    $package = ConvertFrom-Json -InputObject $profileSnapshot.text
+    $patchText = $patchSnapshot.text
     if (!$package.dsh.profile -or !$package.dependencies) { throw 'Unsupported Harness profile layout.' }
     if ((Test-Path -LiteralPath $module) -or $package.dependencies.PSObject.Properties['dsh-mhub-community-v11'] -or
         @($package.dsh.profile.bundles) -contains 'dsh-mhub-community-v11' -or
@@ -105,8 +76,8 @@ function Read-HarnessRegistration {
     }
     return @{
         package = $package
-        profile = @{existed = $true; text = $profileText}
-        patch = @{existed = $patchExists; text = $patchText}
+        profile = $profileSnapshot
+        patch = $patchSnapshot
     }
 }
 
@@ -133,21 +104,20 @@ function Prepare-DesktopRuntime([string]$Directory) {
 
 function Undo-Installation {
     $rollbackErrors = [Collections.Generic.List[string]]::new()
-    for ($i = $writtenFiles.Count - 1; $i -ge 0; $i--) {
-        $path = $writtenFiles[$i]
-        $snapshot = $savedFiles[$path]
-        try {
-            if ($snapshot.ContainsKey('writtenText') -and
-                (![IO.File]::Exists($path) -or [IO.File]::ReadAllText($path) -cne $snapshot.writtenText)) {
-                throw 'The file changed again after installation. Use the saved copy to review the changes.'
-            }
-            if ($snapshot.existed) { Copy-Item -LiteralPath $snapshot.backup -Destination $path -Force }
-            elseif ([IO.File]::Exists($path)) { Remove-Item -LiteralPath $path }
-        } catch { $rollbackErrors.Add("${path}: $($_.Exception.Message)") }
+    $keepHarnessModule = $false
+    for ($i = $fileChanges.Count - 1; $i -ge 0; $i--) {
+        $change = $fileChanges[$i]
+        if ($keepHarnessModule -and $change.path.StartsWith($module + '\', [StringComparison]::OrdinalIgnoreCase)) { continue }
+        try { Undo-CheckedText $change }
+        catch {
+            if ($change.path -in @($profilePatch, $profileJson)) { $keepHarnessModule = $true }
+            $rollbackErrors.Add("$($change.path): $($_.Exception.Message)")
+        }
     }
     # Only the exact module directories created in this transaction are removed.
     $allowed = @($module,$voiceModule,$auraModule) | ForEach-Object { [IO.Path]::GetFullPath($_) }
     foreach ($directory in $createdModules) {
+        if ($keepHarnessModule -and $directory -eq $module) { continue }
         try {
             if ($directory -notin $allowed) { throw 'Rollback target identity changed.' }
             if (Test-Path -LiteralPath $directory) { Remove-Item -LiteralPath $directory -Recurse -Force }
@@ -157,6 +127,7 @@ function Undo-Installation {
 }
 
 Test-PackageIntegrity
+. (Join-Path $panel 'scripts/local-text-transaction.ps1')
 
 $node = (Get-Command node.exe -ErrorAction Stop).Source
 & $node -e "const [major,minor]=process.versions.node.split('.').map(Number);if(process.arch!=='x64'||major<22||(major===22&&minor<15))process.exit(1)"
@@ -234,16 +205,6 @@ if ($LASTEXITCODE) {
     & $python -m pip install --disable-pip-version-check --only-binary=:all: @dependencies
     if ($LASTEXITCODE) { throw 'Python dependency installation failed on both the Tsinghua mirror and the official index. Check your network or proxy and run Install again.' }
 }
-$settingsPath = Join-Path $root 'runtime.settings.json'
-$settings = if (Test-Path -LiteralPath $settingsPath) { Get-Content -LiteralPath $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json } else { [pscustomobject]@{} }
-$settings | Add-Member -NotePropertyName python -NotePropertyValue $python -Force
-if ($MhubPath) { $settings | Add-Member -NotePropertyName mhub -NotePropertyValue $MhubPath -Force }
-if ($AsrPython) { $settings | Add-Member -NotePropertyName asrPython -NotePropertyValue $AsrPython -Force }
-if ($IndexTtsRoot) {
-    $settings | Add-Member -NotePropertyName indexTtsRoot -NotePropertyValue $IndexTtsRoot -Force
-    $settings | Add-Member -NotePropertyName voiceReference -NotePropertyValue $VoiceReference -Force
-    $settings | Add-Member -NotePropertyName ttsPython -NotePropertyValue $indexPython -Force
-}
 if ($PrepareDesktop) {
     # Install local dependencies before committing settings or linking a host.
     # A failed npm download must leave existing Harness/profile files untouched.
@@ -252,8 +213,19 @@ if ($PrepareDesktop) {
 if ($PrepareCompatibilityDesktop) {
     Prepare-DesktopRuntime (Join-Path $panel 'desktop-pet')
 }
+$settingsPath = Join-Path $root 'runtime.settings.json'
+$settingsSnapshot = Read-LocalTextSnapshot $settingsPath
+$settings = if ($settingsSnapshot.existed) { ConvertFrom-Json -InputObject $settingsSnapshot.text } else { [pscustomobject]@{} }
+$settings | Add-Member -NotePropertyName python -NotePropertyValue $python -Force
+if ($MhubPath) { $settings | Add-Member -NotePropertyName mhub -NotePropertyValue $MhubPath -Force }
+if ($AsrPython) { $settings | Add-Member -NotePropertyName asrPython -NotePropertyValue $AsrPython -Force }
+if ($IndexTtsRoot) {
+    $settings | Add-Member -NotePropertyName indexTtsRoot -NotePropertyValue $IndexTtsRoot -Force
+    $settings | Add-Member -NotePropertyName voiceReference -NotePropertyValue $VoiceReference -Force
+    $settings | Add-Member -NotePropertyName ttsPython -NotePropertyValue $indexPython -Force
+}
 try {
-Write-LocalText $settingsPath ($settings | ConvertTo-Json)
+Write-LocalText $settingsPath ($settings | ConvertTo-Json -Depth 30) $settingsSnapshot
 if ($PrepareVoice) {
     $null = New-Item -ItemType Directory -Force -Path (Join-Path $sync 'voice-chat/cache')
     & (Join-Path $sync 'phone/Build-CallPanel.ps1')
@@ -300,14 +272,13 @@ if ($LinkHarness) { $record.hosts += 'harness' }
 if ($LinkAuraBot) { $record.hosts += 'aurabot' }
 $stateDir = Join-Path $panel 'state'
 $recordFile = Join-Path $stateDir 'install-record.json'
-if (Test-Path -LiteralPath $recordFile -PathType Leaf) {
-    try {
-        $prior = Get-Content -LiteralPath $recordFile -Raw -Encoding UTF8 | ConvertFrom-Json
-        if ($prior.hosts) { $record.hosts = @(@($prior.hosts) + @($record.hosts) | Select-Object -Unique) }
-    } catch {}
+$recordSnapshot = Read-LocalTextSnapshot $recordFile
+if ($recordSnapshot.existed) {
+    $prior = ConvertFrom-Json -InputObject $recordSnapshot.text
+    if ($prior.hosts) { $record.hosts = @(@($prior.hosts) + @($record.hosts) | Select-Object -Unique) }
 }
 $null = New-Item -ItemType Directory -Force -Path $stateDir
-Write-LocalText $recordFile ($record | ConvertTo-Json)
+Write-LocalText $recordFile ($record | ConvertTo-Json) $recordSnapshot
 } catch {
     $failure = $_
     try { Undo-Installation } catch {

@@ -16,6 +16,8 @@ jobs:
         run: sha256sum -c SHA256SUMS.txt --quiet
       - working-directory: mhub-community-assistant
         run: node --test --test-concurrency=4 tests/*.test.mjs
+      - name: submit the LAN login form in Chromium
+        run: node --test tests/lan-browser.test.mjs
       - name: build release ZIP and checksum
         shell: pwsh
         run: |
