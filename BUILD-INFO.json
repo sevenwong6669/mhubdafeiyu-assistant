@@ -1,8 +1,8 @@
 {
-  "package": "迈从大肥鱼插件-0.11.0-朋友测试版-20261120-155455Z",
-  "projectVersion": "0.11.0",
-  "builtAtUtc": "2026-11-20T15:54:55.365143+00:00",
-  "releaseType": "harness-friend-test",
+  "package": "mhubdafeiyu-assistant-0.11.1-release-20261123-131914Z",
+  "projectVersion": "0.11.1",
+  "builtAtUtc": "2026-11-23T13:19:14.492612+00:00",
+  "releaseType": "release",
   "recommendedHost": "DeepSeek Harness",
   "supportedModes": [
     "harness",

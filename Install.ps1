@@ -164,23 +164,28 @@ if (!(Test-Path -LiteralPath $python -PathType Leaf)) {
     if (!$PythonPath) {
         $launcher = Get-Command py.exe -ErrorAction SilentlyContinue
         if ($launcher) {
-            $PythonPath = & $launcher.Source -3.12 -c "import sys;print(sys.executable)"
-            if ($LASTEXITCODE) { $PythonPath = $null }
+            foreach ($version in @('-3.13','-3.12','-3.11','-3')) {
+                $candidate = & $launcher.Source $version -c "import sys;print(sys.executable)" 2>$null
+                if ($LASTEXITCODE -eq 0 -and $candidate) { $PythonPath = $candidate; break }
+            }
         }
     }
-    if (!$PythonPath) { throw 'Pass the full path to a Python 3.12 x64 executable with -PythonPath.' }
+    if (!$PythonPath) { throw 'Pass the full path to a Python 3.11-3.13 x64 executable with -PythonPath.' }
     $PythonPath = Resolve-File $PythonPath
-    & $PythonPath -c "import sys,struct;sys.exit(0 if sys.version_info[:2]==(3,12) and struct.calcsize('P')==8 else 1)"
-    if ($LASTEXITCODE) { throw 'Python 3.12 x64 is required.' }
+    & $PythonPath -c "import sys,struct;sys.exit(0 if (3,11)<=sys.version_info[:2]<=(3,13) and struct.calcsize('P')==8 else 1)"
+    if ($LASTEXITCODE) { throw 'Python 3.11-3.13 x64 is required.' }
     & $PythonPath -m venv (Join-Path $root '.venv')
     if ($LASTEXITCODE) { throw 'Could not create the isolated Python environment.' }
 }
-& $python -c "import sys,struct;sys.exit(0 if sys.version_info[:2]==(3,12) and struct.calcsize('P')==8 else 1)"
-if ($LASTEXITCODE) { throw 'The existing package virtual environment must use Python 3.12 x64.' }
+& $python -c "import sys,struct;sys.exit(0 if (3,11)<=sys.version_info[:2]<=(3,13) and struct.calcsize('P')==8 else 1)"
+if ($LASTEXITCODE) { throw 'The existing package virtual environment must use Python 3.11-3.13 x64.' }
 $dependencies = @('psutil','hidapi','Pillow','numpy','sounddevice','soundfile')
 if ($PrepareVoice) { $dependencies += @('sherpa-onnx','requests','websocket-client','httpx','scipy','imageio-ffmpeg') }
-& $python -m pip install --disable-pip-version-check --only-binary=:all: @dependencies
-if ($LASTEXITCODE) { throw 'Python dependency installation failed. Check access to the package index and run Install again.' }
+& $python -m pip install --disable-pip-version-check --only-binary=:all: -i https://pypi.tuna.tsinghua.edu.cn/simple @dependencies
+if ($LASTEXITCODE) {
+    & $python -m pip install --disable-pip-version-check --only-binary=:all: @dependencies
+    if ($LASTEXITCODE) { throw 'Python dependency installation failed on both the Tsinghua mirror and the official index. Check your network or proxy and run Install again.' }
+}
 $settingsPath = Join-Path $root 'runtime.settings.json'
 $settings = if (Test-Path -LiteralPath $settingsPath) { Get-Content -LiteralPath $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json } else { [pscustomobject]@{} }
 $settings | Add-Member -NotePropertyName python -NotePropertyValue $python -Force
