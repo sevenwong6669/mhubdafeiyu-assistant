@@ -1,0 +1,13 @@
+瓷白拟物 / Porcelain
+
+glyphs.png 是为本项目新绘的灰阶图标。图形源码和生成方法见
+scripts/build-porcelain-assets.py。运行脚本即可用 Pillow 重新生成图集和定位样式。
+主题缩略图由 CSS 绘制，头像使用项目自带的大肥鱼品牌图。
+
+fonts/PorcelainUI.woff2 是 Noto Sans SC 的离线可变字重子集，包含页面五种语言
+常用的字符。保留上游的版权和 SIL Open Font License 1.1 文本（fonts/OFL.txt）。
+字体版本、来源和 SHA-256 记录在 fonts/source.json。
+
+重建字体时，提供 source.json 对应提交中的 NotoSansSC[wght].ttf 和 OFL.txt，
+用安装了 Pillow、fonttools 和 Brotli 的 Python 执行：
+python scripts/build-porcelain-assets.py --font <上游字体> --notice <上游OFL.txt> --revision <提交>

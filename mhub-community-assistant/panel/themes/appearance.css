@@ -1,0 +1,61 @@
+/* Only the new appearance UI and skin-only decorations. Classic rules remain in panel.css. */
+.smartisan-avatar,.smartisan-nav-icon,.smartisan-tab-icon,.smartisan-range{display:none}
+.appearance-current{display:none}
+.appearance-open{border:1px solid #dfe5da;border-radius:9px;background:#fff;color:#55725e;padding:7px 12px;font:12px "Segoe UI","Microsoft YaHei",sans-serif;cursor:pointer}
+.appearance-open:hover{background:#f0f5ec}.appearance-open:focus-visible{outline:2px solid #277f70;outline-offset:3px}
+.appearance-dialog{width:min(760px,calc(100vw - 40px));padding:30px;border:1px solid #dce5d6;border-radius:18px;background:#f8faf5;color:#203332;box-shadow:0 24px 80px #19352e40;max-height:90vh;overflow:auto;font:14px/1.6 "Segoe UI","Microsoft YaHei",sans-serif}
+.appearance-dialog:not([open]){display:none}.appearance-dialog::backdrop{background:#152c2b66;backdrop-filter:blur(3px)}
+.appearance-heading{display:flex;justify-content:space-between;align-items:center;gap:20px}.appearance-heading small{font-size:9px;letter-spacing:2px;color:#7b8e75}.appearance-heading h2{font-size:25px;margin:7px 0 20px}.appearance-dialog h3{font-size:15px;margin:4px 0}.appearance-description{font-size:12px;color:#6e8168;margin:8px 0 22px}
+.appearance-close{border:0;background:transparent;font-size:28px;color:#6e8168;cursor:pointer;width:36px;height:36px;align-self:start}.appearance-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.appearance-choice{min-width:0;text-align:left;cursor:pointer;border:2px solid #dfe6d9;border-radius:12px;padding:10px;background:#fff;color:inherit;font:inherit}.appearance-choice:hover{border-color:#9eb8a4}.appearance-choice[aria-pressed=true]{border-color:#277f70;box-shadow:0 0 0 3px #277f7011}.appearance-choice:focus-visible,.appearance-done:focus-visible{outline:3px solid #398fbd;outline-offset:3px}
+.appearance-thumbnail{display:flex;width:100%;height:134px;border:1px solid #dce4d5;border-radius:7px;overflow:hidden;background:#f5f7f0}.appearance-mini-sidebar{display:flex;flex-direction:column;gap:10px;width:26%;padding:14px 10px;background:#e5eddc}.appearance-mini-sidebar i{background:#1b7769;width:20px;height:20px;border-radius:7px;display:block;margin-bottom:5px}.appearance-mini-sidebar b{height:5px;background:#a4b89a;border-radius:2px}.appearance-mini-main{flex:1;padding:18px 10px;display:flex;flex-direction:column;gap:12px}.appearance-mini-main>i{height:10px;display:block;border-radius:3px;background:#dfe8d7}.appearance-mini-main>span{display:flex;gap:6px;flex:1}.appearance-mini-main b{flex:1;border-radius:5px;background:#fff;border:1px solid #e1e6dd}
+.appearance-thumbnail--smartisan{background:linear-gradient(#eee,#deddd9);border-color:#c7c7c4;box-shadow:inset 0 1px 2px #fff}.appearance-thumbnail--smartisan .appearance-mini-sidebar{background:linear-gradient(90deg,#efefec,#dbdbd7);border-right:1px solid #bcbcb9}.appearance-thumbnail--smartisan .appearance-mini-sidebar i{background:url("assets/dafeiyu-original.png") center 35%/cover;border-radius:3px;box-shadow:0 1px 3px #0005,inset 0 0 0 2px #fff}.appearance-thumbnail--smartisan .appearance-mini-sidebar b{background:#bcbdbb;box-shadow:0 1px #fff}.appearance-thumbnail--smartisan .appearance-mini-main>i,.appearance-thumbnail--smartisan .appearance-mini-main b{background:linear-gradient(#fff,#e8e7e4);border:1px solid #c7c6c3;box-shadow:0 2px 3px #0002,inset 0 1px #fff}.appearance-thumbnail--smartisan .appearance-mini-main b:before{content:"";display:block;width:12px;height:12px;margin:10px auto;border-radius:50%;background:radial-gradient(circle at 35% 25%,#a3ecff,#00aaff 40%,#0067a1);box-shadow:0 0 0 3px #fff,0 1px 4px 3px #8d9696}.appearance-thumbnail--smartisan .appearance-mini-main b:nth-child(2):before{filter:hue-rotate(260deg)}.appearance-thumbnail--smartisan .appearance-mini-main b:nth-child(3):before{filter:hue-rotate(170deg)}
+.appearance-choice-name{display:flex;justify-content:space-between;font-weight:650;margin:12px 4px 0}.appearance-check{color:#277f70;visibility:hidden}.appearance-choice[aria-pressed=true] .appearance-check{visibility:visible}.appearance-choice>small{display:block;font-size:10px;color:#7c8b76;margin:2px 4px}.appearance-choice-description{display:block;font-size:11px;line-height:1.7;color:#7c8b76;margin:6px 4px}.appearance-status{min-height:20px;font-size:12px;color:#628465;margin:20px 0 8px}.appearance-footer{border-top:1px solid #dfe6d9;padding-top:17px;display:flex;align-items:center;justify-content:space-between;gap:14px}.appearance-footer>span{font-size:11px;color:#81917b}.appearance-done{border:0;border-radius:8px;background:#1b7769;color:#fff;padding:9px 25px;font:inherit;cursor:pointer}
+@media(max-width:620px){.appearance-dialog{padding:20px}.appearance-choices{grid-template-columns:1fr}.appearance-thumbnail{height:108px}.appearance-footer{flex-wrap:wrap}}
+
+.appearance-thumbnail--liquid-glass-light{background:#f5f5f7;border-color:#e1e5eb}
+.appearance-thumbnail--liquid-glass-light .appearance-mini-sidebar{background:#edf3fa;border-right:1px solid #e2e7ed}
+.appearance-thumbnail--liquid-glass-light .appearance-mini-sidebar i{background:url("assets/dafeiyu-original.png") center 38%/cover;border:1px solid #fff;border-radius:6px}
+.appearance-thumbnail--liquid-glass-light .appearance-mini-sidebar b{background:#c3d7ef}
+.appearance-thumbnail--liquid-glass-light .appearance-mini-main>i{background:#e4f0ff}
+.appearance-thumbnail--liquid-glass-light .appearance-mini-main b{background:#ffffffcf;border-color:#e1e7ef;box-shadow:0 2px 6px #23395008}
+.appearance-thumbnail--liquid-glass-light .appearance-mini-main b:before{content:"";display:block;width:10px;height:10px;margin:11px auto;border-radius:50%;background:#007aff}
+.appearance-thumbnail--liquid-glass-light .appearance-mini-main b:nth-child(2):before{background:#19c65b}
+.appearance-thumbnail--liquid-glass-light .appearance-mini-main b:nth-child(3):before{background:#ff3b30}
+
+.appearance-thumbnail--porcelain {
+  background: linear-gradient(140deg,#f2f1eb,#e6e6df);
+  border-color: #c4c7c0;
+  box-shadow: inset 0 1px #fff;
+}
+.appearance-thumbnail--porcelain .appearance-mini-sidebar {
+  background: #e0e1d9;
+  border-right: 1px solid #c8ccc4;
+}
+.appearance-thumbnail--porcelain .appearance-mini-sidebar i {
+  background: url("assets/dafeiyu-original.png") center 36%/cover;
+  border: 2px solid #f9f9f5;
+  border-radius: 4px 7px 4px 7px;
+  box-shadow: 0 1px 3px #434b3d30;
+}
+.appearance-thumbnail--porcelain .appearance-mini-sidebar b { background: #aeb5ad; }
+.appearance-thumbnail--porcelain .appearance-mini-sidebar b:first-of-type { background: #68806d; }
+.appearance-thumbnail--porcelain .appearance-mini-main>i,
+.appearance-thumbnail--porcelain .appearance-mini-main b {
+  background: linear-gradient(#fcfcf7,#ebece5);
+  border: 1px solid #c6cbc2;
+  box-shadow: inset 0 1px #fff,0 2px 2px #3741381c;
+}
+.appearance-thumbnail--porcelain .appearance-mini-main b::before {
+  content: "";
+  display: block;
+  width: 12px;
+  height: 12px;
+  margin: 12px auto;
+  border-radius: 4px 6px 4px 6px;
+  background: linear-gradient(135deg,#c1c8be,#727c74);
+  box-shadow: inset 0 1px 1px #26382d40,0 1px #fff;
+}
+.appearance-thumbnail--porcelain .appearance-mini-main b:nth-child(2)::before { border-radius: 50%; }
+.appearance-thumbnail--porcelain .appearance-mini-main b:nth-child(3)::before { border-radius: 3px; transform: rotate(45deg); }
+

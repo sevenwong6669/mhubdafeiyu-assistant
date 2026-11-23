@@ -1,0 +1,108 @@
+{
+  "version": 4,
+  "visualPrompt": "设备显示优先：保留用户指定的主体、主色和动作，用原生低分辨率像素画表现，必须有清楚的方形马赛克像素块、阶梯边缘、少色纯色块和粗轮廓。黑底高对比，禁用写实照片、模糊马赛克滤镜、柔光渐变、细纹理、细线和小字。涉及具体物品或角色时，只保留一个明确的主视觉，把主体画大，保留最能认出来的轮廓和一两个特征；正常完整可见时约占有效画面高度的70%～85%，留少量安全边距，保持原比例。装饰仅做点缀；纯灯效按用户要求铺展大色块。",
+  "profiles": {
+    "keyboard": {
+      "label": "75配列键盘通用灯效",
+      "width": 480,
+      "height": 192,
+      "kind": "rgb",
+      "basis": "recommended-canvas",
+      "prompt": "横向灯效画面。用少量明亮的大像素块覆盖主键区，主体保持完整，动态可向左右延展；不画键盘实物。",
+      "generation": {
+        "pngSize": "1280x512",
+        "gifSize": "480x192"
+      },
+      "fit": "cover"
+    },
+    "gt75": {
+      "label": "GT75主键区灯效",
+      "width": 480,
+      "height": 192,
+      "kind": "rgb",
+      "basis": "recommended-from-live-layout",
+      "prompt": "约2.5:1横向构图。用少量明亮的大像素块覆盖主键区，运动横向展开，主体保持完整；不画键盘实物。",
+      "generation": {
+        "pngSize": "1280x512",
+        "gifSize": "480x192"
+      },
+      "fit": "cover"
+    },
+    "ace75": {
+      "label": "Ace75主键区灯效",
+      "width": 448,
+      "height": 192,
+      "kind": "rgb",
+      "basis": "recommended-from-live-layout",
+      "prompt": "约2.33:1横向构图。用少量明亮的大像素块覆盖主键区，主体保持完整；不画键盘实物。",
+      "generation": {
+        "pngSize": "1344x576",
+        "gifSize": "448x192"
+      },
+      "fit": "cover"
+    },
+    "speaker": {
+      "label": "K20 GT音箱小屏",
+      "width": 256,
+      "height": 32,
+      "kind": "mono",
+      "basis": "verified-device-format",
+      "prompt": "为256×32、8:1超宽黑白点阵屏设计。只把画布正中间占高度37.5%的8:1横幅作为有效画面：GIF母版768×256中有效区域为x=0..767、y=80..175（768×96），静态母版1536×512中有效区域为x=0..1535、y=160..351（1536×192）。横幅之外上下全部纯黑，不放白色内容。主体用纯白粗像素剪影，按原比例放大；成品中单个主体完整可见时以约22～27像素高为目标。左右空间用来表现移动，少量泡泡、波纹只做陪衬。无灰阶、背景纹理、文字、音箱实物或横幅边框。",
+      "generation": {
+        "pngSize": "1536x512",
+        "gifSize": "768x256"
+      },
+      "fit": "contain",
+      "sourceLayout": {
+        "mode": "horizontal-band",
+        "aspectRatio": 8,
+        "gifWorkingSize": "768x96",
+        "pngWorkingSize": "1536x192",
+        "cropOnlyWhenContentFits": true,
+        "marginPixels": 2
+      }
+    },
+    "sync": {
+      "label": "神光同步通用画布",
+      "width": 1024,
+      "height": 1024,
+      "kind": "rgb",
+      "basis": "recommended-canvas",
+      "prompt": "方形全局灯效画布，中心大色块配合向外扩散的粗像素光带或大颗粒。边缘可延展，抽象光效无需额外添加物品；不画桌面或设备实物。",
+      "generation": {
+        "pngSize": "1024x1024",
+        "gifSize": "512x512"
+      },
+      "fit": "cover"
+    }
+  },
+  "evidence": {
+    "date": "2026-11-06",
+    "keyboardRatios": {
+      "gt75": 2.4933846964910362,
+      "ace75": 2.3219390169704583
+    },
+    "currentMhubSurface": {
+      "width": 726,
+      "height": 506
+    },
+    "notes": "键盘比例来自当前M HUB resolveKeyboardLayout主灯索引过滤后的包围盒；不是硬件图片分辨率。神光同步画布随用户摆放变化，1024方图是通用制作规范。音箱每帧1024字节为确定格式。",
+    "speaker": {
+      "width": 256,
+      "height": 32,
+      "aspectRatio": 8,
+      "bytesPerMonoFrame": 1024,
+      "residentFrames": 12,
+      "source": "M HUB k20-real-screen-ui.js qt=256,Vt=32 and wired image status imageCount=12,imageBytes=12288",
+      "oldMaster": "768x256 contain -> 96x32 centered, max 37.5% screen width",
+      "measuredLatestContentBounds": [
+        84,
+        4,
+        173,
+        30
+      ],
+      "measuredLatestContentWidth": 89,
+      "newRecipe": "compose an 8:1 central band inside the existing API master; crop only when all thresholded foreground stays inside it; preserve subject otherwise"
+    }
+  }
+}

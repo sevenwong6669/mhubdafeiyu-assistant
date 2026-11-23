@@ -1,0 +1,34 @@
+/* Presentation preferences only. This module never sends a device/configuration request. */
+(() => {
+ const key='dafeiyu.ui.language.v1',languages=[['zh-CN','简体中文'],['ru','Русский'],['en','English'],['fr','Français'],['it','Italiano']],supported=new Set(languages.map(x=>x[0]));
+ const normalize=v=>{if(typeof v!=='string')return null;const base=v.toLowerCase().split(/[-_]/)[0];return base==='zh'?'zh-CN':supported.has(base)?base:null;};
+ let stored;try{stored=localStorage.getItem(key);}catch{}
+ let locale=stored?(supported.has(stored)?stored:'zh-CN'):((navigator.languages??[navigator.language]).map(normalize).find(Boolean)??'zh-CN');
+ const messages=window.DafeiyuMessages??{},reverse=new Map(),nodes=new WeakMap(),proxies=new WeakMap();
+ for(const table of Object.values(messages))for(const [source,value]of Object.entries(table))if(typeof value==='string')reverse.set(value,source);
+ const source=s=>Object.hasOwn(messages['zh-CN']??{},s)?s:reverse.get(s)??s;
+ function t(value,vars={}){const original=source(String(value??'')),translated=messages[locale]?.[original]??messages['zh-CN']?.[original]??original;return String(translated??original).replace(/\{(\w+)\}/g,(all,k)=>Object.hasOwn(vars,k)?String(vars[k]):all);}
+ const h=(value,vars)=>t(value,vars).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ function markup(value){return String(value).replace(/[^<>"'{}=\r\n]*[\u3400-\u9fff][^<>"'{}=\r\n]*/g,text=>{const trimmed=text.trim();return text.replace(trimmed,h(trimmed));});}
+ function live(value){if(!value||typeof value!=='object')return typeof value==='string'?t(value):value;if(proxies.has(value))return proxies.get(value);const proxy=new Proxy(value,{get(target,prop,receiver){return live(Reflect.get(target,prop,receiver));}});proxies.set(value,proxy);return proxy;}
+ const number=(value,options={})=>new Intl.NumberFormat(locale,options).format(value);
+ function plural(forms,count){const category=new Intl.PluralRules(locale).select(count);return t(forms[category]??forms.other,{count:number(count)});}
+ const phrases={everyHours:{'zh-CN':{other:'每 {count} 小时'},en:{one:'Every hour',other:'Every {count} hours'},ru:{one:'Каждый {count} час',few:'Каждые {count} часа',many:'Каждые {count} часов',other:'Каждые {count} часа'},fr:{one:'Chaque heure',other:'Toutes les {count} heures'},it:{one:'Ogni ora',other:'Ogni {count} ore'}},macroSteps:{'zh-CN':{other:'{count} 个宏步骤'},en:{one:'{count} macro step',other:'{count} macro steps'},ru:{one:'{count} шаг макроса',few:'{count} шага макроса',many:'{count} шагов макроса',other:'{count} шага макроса'},fr:{one:'{count} étape de macro',other:'{count} étapes de macro'},it:{one:'{count} passo della macro',other:'{count} passi della macro'}}};
+ function phrase(id,count){return plural(phrases[id]?.[locale]??phrases[id]?.['zh-CN']??{other:id},count);}
+ phrases.devicesOnline={'zh-CN':{other:'{count} 台在线'},en:{one:'{count} device online',other:'{count} devices online'},ru:{one:'{count} устройство в сети',few:'{count} устройства в сети',many:'{count} устройств в сети',other:'{count} устройства в сети'},fr:{one:'{count} appareil connecté',other:'{count} appareils connectés'},it:{one:'{count} dispositivo connesso',other:'{count} dispositivi connessi'}};
+ phrases.live2dMotions={'zh-CN':{other:'{shown} / {count} 个动作'},en:{one:'{shown} / {count} motion',other:'{shown} / {count} motions'},ru:{one:'{shown} / {count} действие',few:'{shown} / {count} действия',many:'{shown} / {count} действий',other:'{shown} / {count} действия'},fr:{one:'{shown} / {count} animation',other:'{shown} / {count} animations'},it:{one:'{shown} / {count} movimento',other:'{shown} / {count} movimenti'}};
+ phrases.live2dTracks={'zh-CN':{other:'{count} 条轨道'},en:{one:'{count} track',other:'{count} tracks'},ru:{one:'{count} дорожка',few:'{count} дорожки',many:'{count} дорожек',other:'{count} дорожки'},fr:{one:'{count} piste',other:'{count} pistes'},it:{one:'{count} traccia',other:'{count} tracce'}};
+ function relative(amount,unit){return new Intl.RelativeTimeFormat(locale,{numeric:'auto'}).format(amount,unit);}
+ const date=(value,options={})=>new Intl.DateTimeFormat(locale,options).format(new Date(value));
+ const weather=value=>{if(typeof value!=='string')return value;const parts=value.match(/^(\S+)\s+(-?[\d.]+)°C$/);return parts?t(parts[1])+' '+number(Number(parts[2]),{maximumFractionDigits:1})+' °C':value;};
+ function localize(root=document){root.querySelectorAll?.('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n);});root.querySelectorAll?.('[data-i18n-aria-label]').forEach(el=>el.setAttribute('aria-label',t(el.dataset.i18nAriaLabel)));}
+ function localizeFixed(root){if(!root)return;const walk=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;while(node=walk.nextNode()){if(node.parentElement?.closest('input,textarea,script,style,[translate="no"]'))continue;const text=node.textContent,trimmed=text.trim();const original=nodes.get(node)??source(trimmed);if(!messages['zh-CN']||!Object.hasOwn(messages['zh-CN'],original))continue;nodes.set(node,original);node.textContent=text.replace(trimmed,t(original));}}
+ function reflect(){document.documentElement.lang=locale;document.documentElement.dataset.locale=locale;document.title=t('迈从大肥鱼插件');localize();document.querySelectorAll('.sidebar,.topbar,.appearance-dialog,footer').forEach(root=>{localizeFixed(root);root.querySelectorAll('[aria-label]').forEach(el=>{const text=el.dataset.i18nAriaLabel??source(el.getAttribute('aria-label'));if(Object.hasOwn(messages['zh-CN']??{},text)){el.dataset.i18nAriaLabel=text;el.setAttribute('aria-label',t(text));}});});}
+ function setLocale(value,{persist=true}={}){if(!supported.has(value))return false;locale=value;let saved=true;if(persist)try{localStorage.setItem(key,value);}catch{saved=false;}reflect();window.dispatchEvent(new CustomEvent('dafeiyu:languagechange',{detail:{locale,saved}}));return saved;}
+ const messageFragments=Object.keys(messages['zh-CN']??{}).filter(k=>k.length>=4&&/[\u3400-\u9fff]/.test(k)).sort((a,b)=>b.length-a.length);
+ const message=value=>{const text=String(value??'');if(Object.hasOwn(messages['zh-CN']??{},text))return t(text);if(locale==='zh-CN')return text;return text.replace(/[\u3400-\u9fff][^\n]*?(?=\n|$)/g,part=>{let output=part;for(const key of messageFragments){if(output.includes(key))output=output.replaceAll(key,t(key));}return output;});};
+ window.DafeiyuI18n={get locale(){return locale;},key,languages,normalize,t,h,markup,live,number,date,relative,plural,phrase,weather,localize,localizeFixed,setLocale,message};
+ document.documentElement.lang=locale;
+ document.addEventListener('DOMContentLoaded',reflect);
+ window.addEventListener('storage',event=>{if(event.key===key)setLocale(supported.has(event.newValue)?event.newValue:'zh-CN',{persist:false});});
+})();

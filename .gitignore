@@ -1,0 +1,17 @@
+# Runtime state and user data — never commit these
+**/node_modules/
+**/__pycache__/
+**/.venv/
+**/secrets/
+**/config.local.json
+**/runtime.settings.json
+**/lan-access-key.txt
+**/astrbot_device_key.txt
+**/*.pid
+**/*.request
+**/*.log
+**/*.tmp
+**/backup-image.bin
+*.dpapi
+.env
+.env.*

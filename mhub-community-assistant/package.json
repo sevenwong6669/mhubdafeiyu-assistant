@@ -1,0 +1,35 @@
+{
+  "name": "dsh-mhub-community-v11",
+  "version": "0.11.0",
+  "private": true,
+  "type": "module",
+  "description": "迈从大肥鱼插件 · 设备联动、屏幕、语音与陪伴控制中心",
+  "exports": {
+    ".": "./native-host.mjs",
+    "./client": "./client.js",
+    "./package.json": "./package.json",
+    "./icon": "./panel/icon.svg"
+  },
+  "icon": "./panel/icon.svg",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.bundle.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "slots"
+      ],
+      "external": [
+        "react"
+      ]
+    }
+  },
+  "engines": {
+    "node": ">=22.15"
+  },
+  "scripts": {
+    "test": "node --test --test-concurrency=4 tests/*.test.mjs",
+    "panel": "node scripts/start-panel.mjs"
+  }
+}

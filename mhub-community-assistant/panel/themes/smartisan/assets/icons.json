@@ -1,0 +1,396 @@
+{
+  "version": 1,
+  "source": "Icon catalog for generated placeholder artwork; Smartisan originals are user-provided per 素材说明.md",
+  "icons": {
+    "control": {
+      "label": "控制台",
+      "normal": "control-normal.png",
+      "selected": "control-selected.png",
+      "pressed": "control-selected.png",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        2,
+        3,
+        68
+      ],
+      "mask": false,
+      "origin": "reused"
+    },
+    "community": {
+      "label": "社区概览",
+      "normal": "community-normal.png",
+      "selected": "community-selected.png",
+      "pressed": "community-selected.png",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        2,
+        3,
+        68
+      ],
+      "mask": false,
+      "origin": "reused"
+    },
+    "devices": {
+      "label": "我的设备",
+      "normal": "devices-normal.png",
+      "selected": "devices-selected.png",
+      "pressed": "devices-selected.png",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        0,
+        1.5,
+        72
+      ],
+      "mask": false,
+      "origin": "reused"
+    },
+    "history": {
+      "label": "运行记录",
+      "normal": "history-normal.png",
+      "selected": "history-selected.png",
+      "pressed": "history-selected.png",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        8,
+        8,
+        56
+      ],
+      "mask": false,
+      "origin": "reused"
+    },
+    "home": {
+      "label": "总览",
+      "normal": "home-normal.png",
+      "selected": "home-selected.png",
+      "pressed": "home-selected.png",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        2.5,
+        3,
+        67
+      ],
+      "mask": false,
+      "origin": "reused"
+    },
+    "keyboard": {
+      "label": "互动与快捷键",
+      "normal": "keyboard-normal.png",
+      "selected": "keyboard-selected.png",
+      "pressed": "keyboard-selected.png",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        3,
+        4,
+        66
+      ],
+      "mask": false,
+      "origin": "reused"
+    },
+    "lights": {
+      "label": "任务与灯光",
+      "normal": "lights-normal.png",
+      "selected": "lights-selected.png",
+      "pressed": "lights-selected.png",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        1,
+        2,
+        70
+      ],
+      "mask": false,
+      "origin": "reused"
+    },
+    "screen": {
+      "label": "音箱屏幕与外观",
+      "normal": "screen-normal.png",
+      "selected": "screen-selected.png",
+      "pressed": "screen-selected.png",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        4,
+        5,
+        64
+      ],
+      "mask": false,
+      "origin": "reused"
+    },
+    "voice": {
+      "label": "语音对话与电话",
+      "normal": "voice-normal.png",
+      "selected": "voice-selected.png",
+      "pressed": "voice-selected.png",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        4,
+        5,
+        64
+      ],
+      "mask": false,
+      "origin": "reused"
+    },
+    "audio": {
+      "label": "音频设备",
+      "normal": "audio-normal.png",
+      "selected": "audio-selected.png",
+      "pressed": "audio-selected.png",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        4,
+        5,
+        64
+      ],
+      "mask": false,
+      "origin": "reused"
+    },
+    "recognition": {
+      "label": "模型与识别",
+      "normal": "recognition-normal.png",
+      "selected": "recognition-selected.png",
+      "pressed": "recognition-selected.png",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        1.5,
+        3,
+        69
+      ],
+      "mask": false,
+      "origin": "reused"
+    },
+    "captions": {
+      "label": "字幕与提示音",
+      "normal": "captions-normal.png",
+      "selected": "captions-selected.png",
+      "pressed": "captions-selected.png",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        3,
+        4.5,
+        66
+      ],
+      "mask": false,
+      "origin": "reused"
+    },
+    "save": {
+      "label": "保存参数",
+      "normal": "save-normal.png",
+      "selected": "save-selected.png",
+      "pressed": "save-selected.png",
+      "width": 153,
+      "height": 153,
+      "crop": [
+        41,
+        36.5,
+        71
+      ],
+      "mask": false,
+      "origin": "reused"
+    },
+    "cancel": {
+      "label": "撤销与结束试用",
+      "normal": "cancel-normal.png",
+      "selected": "cancel-selected.png",
+      "pressed": "cancel-selected.png",
+      "width": 153,
+      "height": 153,
+      "crop": [
+        47.5,
+        47,
+        58
+      ],
+      "mask": false,
+      "origin": "reused"
+    },
+    "play": {
+      "label": "播放与试用",
+      "normal": "play-metal.svg",
+      "selected": "play-metal-pressed.svg",
+      "pressed": "play-metal-pressed.svg",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        0,
+        0,
+        72
+      ],
+      "mask": false,
+      "origin": "supplemental",
+      "render": "painted"
+    },
+    "refresh": {
+      "label": "刷新",
+      "normal": "refresh-normal.png",
+      "selected": "refresh-selected.png",
+      "pressed": "refresh-selected.png",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        0,
+        0,
+        72
+      ],
+      "mask": true,
+      "origin": "reused"
+    },
+    "mouse": {
+      "label": "鼠标设备",
+      "normal": "mouse-normal.png",
+      "selected": "mouse-selected.png",
+      "pressed": "mouse-selected.png",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        1.5,
+        1,
+        70
+      ],
+      "mask": false,
+      "origin": "reused"
+    },
+    "knowledge": {
+      "label": "配置知识",
+      "normal": "knowledge.svg",
+      "selected": "knowledge.svg",
+      "pressed": "knowledge.svg",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        4,
+        4,
+        64
+      ],
+      "origin": "supplemental"
+    },
+    "balance": {
+      "label": "余额灯带",
+      "normal": "balance.svg",
+      "selected": "balance.svg",
+      "pressed": "balance.svg",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        4,
+        4,
+        64
+      ],
+      "origin": "supplemental"
+    },
+    "speaker": {
+      "label": "音箱",
+      "normal": "speaker.svg",
+      "selected": "speaker.svg",
+      "pressed": "speaker.svg",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        0,
+        0,
+        72
+      ],
+      "mask": false,
+      "origin": "supplemental",
+      "render": "monochrome"
+    },
+    "headset-dock": {
+      "label": "耳机充电底座",
+      "normal": "headset-dock.svg",
+      "selected": "headset-dock.svg",
+      "pressed": "headset-dock.svg",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        0,
+        0,
+        72
+      ],
+      "mask": false,
+      "origin": "supplemental",
+      "render": "monochrome"
+    },
+    "mouse-dock": {
+      "label": "鼠标磁吸底座",
+      "normal": "mouse-dock.svg",
+      "selected": "mouse-dock.svg",
+      "pressed": "mouse-dock.svg",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        0,
+        0,
+        72
+      ],
+      "mask": false,
+      "origin": "supplemental",
+      "render": "monochrome"
+    },
+    "status-idle": {
+      "label": "待命状态",
+      "normal": "status-idle.svg",
+      "selected": "status-idle.svg",
+      "pressed": "status-idle.svg",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        8,
+        8,
+        56
+      ],
+      "mask": false,
+      "origin": "reused",
+      "render": "monochrome",
+      "source": "Smartisan-M1-6.1.3/界面资源/系统设置/res/drawable-xxhdpi-v4/sort_menu_creat_time_icon.png",
+      "original": "status-idle-original.png",
+      "embeddedOriginal": true
+    },
+    "status-working": {
+      "label": "处理中状态",
+      "normal": "status-working.svg",
+      "selected": "status-working.svg",
+      "pressed": "status-working.svg",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        2,
+        3,
+        68
+      ],
+      "mask": false,
+      "origin": "reused",
+      "render": "monochrome",
+      "source": "Smartisan-M1-6.1.3/界面资源/系统设置/res/drawable-xxhdpi-v4/setting_item_icon_advanced.png",
+      "original": "status-working-original.png",
+      "embeddedOriginal": true
+    },
+    "status-attention": {
+      "label": "需要你状态",
+      "normal": "status-attention.svg",
+      "selected": "status-attention.svg",
+      "pressed": "status-attention.svg",
+      "width": 72,
+      "height": 72,
+      "crop": [
+        3,
+        3,
+        66
+      ],
+      "mask": false,
+      "origin": "reused",
+      "render": "monochrome",
+      "source": "Smartisan-M1-6.1.3/界面资源/系统设置/res/drawable-xxhdpi-v4/setting_item_icon_sound.png",
+      "original": "status-attention-original.png",
+      "embeddedOriginal": true
+    }
+  },
+  "sources": []
+}

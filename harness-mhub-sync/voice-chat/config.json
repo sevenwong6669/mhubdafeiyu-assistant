@@ -1,0 +1,13 @@
+{
+  "port": 18780,
+  "voiceChannel": "live2d",
+  "asrProvider": "internal-local",
+  "asrLanguage": "zh",
+  "fishBuddyModel": "int8",
+  "fishBuddyFollowSelection": false,
+  "holdMilliseconds": 250,
+  "ttsProvider": "breezeblue",
+  "live2dSpeechRate": 1,
+  "voiceHotkey": "Ctrl+Alt+Shift+1",
+  "diagnosticCapture": false
+}

@@ -1,0 +1,31 @@
+{
+  "clips": {
+    "game-start.wav": {
+      "seconds": 0.3
+    },
+    "game-turn.wav": {
+      "seconds": 0.3
+    },
+    "game-win.wav": {
+      "seconds": 0.3
+    },
+    "game-lose.wav": {
+      "seconds": 0.3
+    },
+    "game-fireworks.wav": {
+      "seconds": 0.3
+    },
+    "game-count-2.wav": {
+      "seconds": 0.3
+    },
+    "game-count-3.wav": {
+      "seconds": 0.3
+    },
+    "game-count-4.wav": {
+      "seconds": 0.3
+    },
+    "beg.wav": {
+      "seconds": 0.3
+    }
+  }
+}

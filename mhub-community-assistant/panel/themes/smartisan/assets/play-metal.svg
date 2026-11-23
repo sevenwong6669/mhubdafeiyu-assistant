@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 72 72">
+ <defs><linearGradient id="edge" x2="0" y2="1"><stop stop-color="#fdfdfb"/><stop offset=".5" stop-color="#bbc0c2"/><stop offset="1" stop-color="#919b9f"/></linearGradient><linearGradient id="face" x2="0" y2="1"><stop stop-color="#fff"/><stop offset=".5" stop-color="#f4f4f0"/><stop offset="1" stop-color="#d9dcd9"/></linearGradient><linearGradient id="mark" x2="0" y2="1"><stop stop-color="#6c767c"/><stop offset="1" stop-color="#45535c"/></linearGradient></defs>
+ <ellipse cx="36" cy="63" rx="23" ry="3" fill="#000" opacity=".1"/>
+ <circle cx="36" cy="34" r="28" fill="url(#edge)" stroke="#9da5a8" stroke-width="1.5"/>
+ <circle cx="36" cy="34" r="24" fill="url(#face)" stroke="#fff" stroke-width="1.2"/>
+ <path d="m29 22 20 13-20 13Z" fill="#fff" transform="translate(0 1)"/>
+ <path d="m29 21 20 13-20 13Z" fill="url(#mark)" stroke="#657178" stroke-width=".7" stroke-linejoin="round"/>
+</svg>

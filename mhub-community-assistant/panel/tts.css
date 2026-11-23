@@ -1,0 +1,48 @@
+/* Structural styles inherit controls and materials from the selected theme. */
+.tts-layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:20px;align-items:start;margin:20px 0}.tts-main{min-width:0;display:grid;gap:20px}.tts-main>.card{margin:0}.tts-service-list{min-width:0}.tts-service{display:block;width:100%;text-align:left;border:1px solid #d8dce3;background:#fff;border-radius:12px;padding:16px;margin-bottom:10px;font:inherit;color:inherit;cursor:pointer;transition:background-color 150ms ease,border-color 150ms ease}.tts-service span{display:block;font-weight:600;font-size:14px;overflow-wrap:anywhere}.tts-service small{display:block;font-size:12px;line-height:1.7;margin-top:7px;color:#6e6e73}.tts-service.selected{background:#edf5ff;border-color:#007aff}.tts-current>div{display:flex;align-items:center;flex-wrap:wrap;gap:12px}.tts-status-dot{width:9px;height:9px;border-radius:50%;background:#a4a8ad}.tts-status-dot.ready{background:#34c759}.tts-current .control-muted{margin-bottom:0}.tts-fields{min-width:0}.tts-field{display:grid;grid-template-columns:minmax(130px,1fr) minmax(180px,1.5fr);align-items:center;gap:24px;border-bottom:1px solid #e5e5ea;padding:17px 0;font-size:14px}.tts-field strong{font-size:14px;font-weight:500}.tts-field small{display:block;line-height:1.6;font-size:12px;color:#6e6e73;margin-top:6px}.tts-field input:not([type=checkbox]),.tts-field select,.tts-field textarea,.tts-audition>textarea{width:100%;max-width:100%;min-width:0!important;box-sizing:border-box;padding:10px 12px;border:1px solid #d2d5dc;border-radius:8px;background:#fff;color:inherit;font:inherit;line-height:1.5}.tts-field textarea{resize:vertical}.tts-field input[type=checkbox]{justify-self:end;width:20px;height:20px;accent-color:#007aff}.tts-field input:focus-visible,.tts-field select:focus-visible,.tts-field textarea:focus-visible,.tts-audition textarea:focus-visible,.tts-service:focus-visible{outline:2px solid #007aff;outline-offset:3px}.tts-list-buttons{margin-top:12px}.tts-editor .control-details{margin-bottom:0}.tts-preview-label{display:block;font-size:13px;margin:16px 0 9px}.tts-audition>textarea{resize:vertical}.tts-result{padding:14px 16px;border-radius:10px;background:#f2f4f7;font-size:13px;line-height:1.7;margin-top:18px;overflow-wrap:anywhere}.tts-result p{margin:6px 0 0}.tts-favorites{display:flex;flex-wrap:wrap;gap:8px}.tts-favorites button{max-width:100%;overflow-wrap:anywhere}.tts-scenes{margin-top:22px}.tts-main .control-form-footer{position:static!important;box-shadow:none!important}.tts-layout .button,.tts-scenes .button{white-space:normal}
+[data-theme="smartisan"] .tts-service{background:linear-gradient(#fafaf9,#eae9e6);border-color:#c5c5c0;box-shadow:inset 0 1px 0 #fff,0 2px 4px #00000012;color:#4e5961;transition:background-color 150ms cubic-bezier(.22,.61,.36,1),box-shadow 150ms cubic-bezier(.22,.61,.36,1)}[data-theme="smartisan"] .tts-service.selected{background:linear-gradient(#f5f8fc,#e1e7ee);border-color:#aab9c7;box-shadow:inset 0 1px 0 #fff,0 2px 4px #00000015;color:#325e86}[data-theme="smartisan"] .tts-field{border-bottom-color:#d7d7d2;box-shadow:0 1px 0 #ffffffa0}[data-theme="smartisan"] .tts-field input:not([type=checkbox]),[data-theme="smartisan"] .tts-field textarea,[data-theme="smartisan"] .tts-audition>textarea{background:linear-gradient(#f5f5f3,#fff);border-color:#c8c9c6;box-shadow:inset 0 1px 3px #00000014,0 1px 0 #fff}[data-theme="smartisan"] .tts-result{background:#eaece9;border:1px solid #d2d4cf;box-shadow:inset 0 1px 3px #00000009}
+@media(max-width:1100px){.tts-layout{grid-template-columns:180px minmax(0,1fr)}.tts-field{gap:14px;grid-template-columns:minmax(110px,1fr) minmax(150px,1.5fr)}}@media(max-width:760px){.tts-layout{grid-template-columns:1fr}.tts-service-list{display:flex;flex-wrap:wrap;gap:10px}.tts-service{width:auto;flex:1 1 160px;margin:0}.tts-service-list>p{width:100%}.tts-field{grid-template-columns:1fr;gap:9px}.tts-field input[type=checkbox]{justify-self:start}.tts-current>div{gap:8px}}@media(prefers-reduced-motion:reduce){.tts-service{transition:none!important}}
+@media(max-width:760px){[data-theme="smartisan"] .control-subtabs{display:flex;flex-wrap:nowrap;overflow-x:auto;max-width:100%;width:100%;box-sizing:border-box}[data-theme="smartisan"] .control-subtabs button{flex:0 0 auto;white-space:nowrap;min-width:108px}}
+[data-theme="smartisan"] .tts-enter{animation:tts-enter 220ms cubic-bezier(.22,.61,.36,1) both}@keyframes tts-enter{from{opacity:.8;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}@media(prefers-reduced-motion:reduce){.tts-enter{animation:none!important}}
+.tts-parameters>summary{cursor:pointer;padding:14px 0;font-weight:600}
+.tts-scenes-details>.tts-scenes{margin-top:14px}
+.tts-scenes-details>summary{cursor:pointer}
+.tts-main .tts-audition{order:0}
+.tts-main .tts-editor{order:1}
+
+/* Task lighting uses the available editor width in either skin. */
+html[data-theme] .light-settings-form{container:light-controls / inline-size;min-width:0}
+html[data-theme] .light-settings-form .task-light-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}
+html[data-theme] .light-state-picker,html[data-theme] .light-edit-toggle{display:none}
+html[data-theme] .task-card-heading{display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap}
+html[data-theme] .task-card-heading h3{margin:0}
+html[data-theme] .task-card-heading .button{flex:0 1 auto;min-height:38px;white-space:normal;margin:0}
+html[data-theme="smartisan"] .light-settings-form .task-light-card:after{display:none}
+html[data-theme] .light-settings-form>.control-form-footer:has(button:disabled):not(:has(button:enabled)){display:none}
+@container light-controls (max-width:53rem){
+ html[data-theme] .light-settings-form .light-state-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:12px 0}
+ html[data-theme] .light-state-picker button{min-width:0;padding:8px 4px;min-height:40px;white-space:normal;overflow-wrap:anywhere}
+ html[data-theme] .light-state-picker button[aria-pressed="true"]{color:var(--accent);font-weight:700;outline:1px solid currentColor;outline-offset:-2px}
+ html[data-theme] .light-settings-form .task-light-grid{grid-template-columns:1fr;margin:8px 0}
+ html[data-theme] .task-light-card[data-selected="false"],html[data-theme] .task-light-card[data-editing="false"]>.light-fields{display:none}
+ html[data-theme] .light-edit-toggle{display:inline-flex;min-height:36px}
+ html[data-theme] .task-card-heading .button{min-height:42px}
+ html[data-theme] .light-settings-form .task-light-card>p{min-height:0;padding-left:0;margin:8px 0 12px}
+}
+@media(max-width:760px){
+ html[data-theme] .control-subtabs[data-section="lighting"]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;overflow:visible}
+ html[data-theme] .control-subtabs[data-section="lighting"] button{width:100%;min-width:0;min-height:40px;padding:5px 8px;white-space:normal;overflow-wrap:anywhere}
+}
+/* A stale receipt keeps its original threshold colour but cannot look live. */
+.balance-receipt-history .balance-segments{opacity:.46}
+.balance-receipt-history .balance-numbers strong{color:var(--muted)}
+.balance-receipt-status{margin:0 0 12px;font-weight:600}
+.speaker-mode-options{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 14px;padding:0;border:0;min-width:0}
+.speaker-mode-options legend{padding:0 0 4px;font-weight:600}
+html[data-theme] .speaker-mode-option{display:inline-flex;gap:7px;align-items:center;min-height:40px;margin:0;padding:7px 11px;border:1px solid var(--line,#ccc);border-radius:7px;cursor:pointer}
+html[data-theme] .speaker-mode-option:has(:checked){border-color:var(--accent);color:var(--accent);font-weight:600}
+html[data-theme] .speaker-mode-option:has(:disabled){cursor:default;opacity:.7}
+html[data-theme] .speaker-mode-option:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+html[data-theme] .speaker-mode-option input[type="radio"]{width:16px;height:16px;flex:none;margin:0;accent-color:var(--accent)}
+.weather-settings details>summary{cursor:pointer;min-height:36px;line-height:36px}
+@media(max-width:520px){.speaker-mode-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.speaker-mode-option span{overflow-wrap:anywhere}}

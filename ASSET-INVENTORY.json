@@ -1,0 +1,222 @@
+[
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/arrow-pressed.png",
+    "sha256": "d4203042196ad9c0b1920409530e20a966218efd1087c32b62af905550bb4d8d"
+  },
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/arrow.png",
+    "sha256": "d6203423f76bdac5a0e85f4635a77c151c15bc74e583b532b88a6c813a69204d"
+  },
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/check-pressed.png",
+    "sha256": "da6f6cd23153e31ebc07fcb2d5e40509d04ac1fb90101782446c86ca4820c612"
+  },
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/check.png",
+    "sha256": "58b6a7b8d849a8a49f29626e851166bcc19525f5b7e6d1308b999277bf386950"
+  },
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/divider.9.png",
+    "sha256": "f197e6894f88caab1c2b871acefff236a60802496bc38529313fd2bf36d8031d"
+  },
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/flag-china.png",
+    "sha256": "036c4ab5ebd9b6a8dc0e539954d16baf8464006a25a5feaec8b60fb6691b48a9"
+  },
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/flag-france.png",
+    "sha256": "e721b7aaa2bc97de83c8034e0b9d69c33a987f9de5b93a7251b15e0851b94d25"
+  },
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/flag-russia.png",
+    "sha256": "cc89c0b93c66a71e7e69206a6a1d9b75324cd77a80c1ab51e16b7b6d01584f90"
+  },
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/flag-usa.png",
+    "sha256": "32509280b415cf9250a2e752ba3571adf7ca4fb967f3e37545c810a01c6bc022"
+  },
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/keyboard.png",
+    "sha256": "08579e019f0025aa2085d3ce076e53eaf5b45f607f47596d78d9cc9d4447e227"
+  },
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/language.png",
+    "sha256": "3cd4ce433cf53550ae72fd355e92ed4f02020895e5d634ba13aa7ad59c466cab"
+  },
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/radio-off.png",
+    "sha256": "e50c28478f77ed512b278043e22e59299e093f3d2003eeb9df1c988e01675074"
+  },
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/radio-on.png",
+    "sha256": "2dd111f2bb1960310f2c85cd7f307535132394098345829d2f6562a54ca251d7"
+  },
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/radio-pressed.png",
+    "sha256": "0ed1bfdef56b75fa15b6d51476e924299cb89c5dfe8449cd46ec7db66437367a"
+  },
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/row-pressed.9.png",
+    "sha256": "30161b815af453899f548802cab75f90581bc4b1d23ccf7ed55219572662876e"
+  },
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/row.9.png",
+    "sha256": "7e62f07fd825d0dec24ecc14768bb020dbfb1bd2ceddc4b4c9878b81d905eaca"
+  },
+  {
+    "file": "mhub-community-assistant/panel/i18n/assets/settings.png",
+    "sha256": "979799543c34bb1cf7fc13143983eee40b853667e8965227cc7c801175375d79"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/assets/dafeiyu-original.png",
+    "sha256": "9e37bae1882596a4e009e332ae60a93dc67bc57a0ced17e2b57ef94de0ca5cac"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/assets/dafeiyu-wallpaper.png",
+    "sha256": "1f830701608bc7d96b06041430a0659450a677d637b857b9a3679aa2a5613798"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/porcelain/fonts/PorcelainUI.woff2",
+    "sha256": "f64be05e77e4e17bc8b28ecdfa6b8ef378520bb595331eb6716f9cfbd8e5d131"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/porcelain/glyphs.png",
+    "sha256": "621252277a2929d34c08558861be4f238f13dd4d1ca7ce85bbe3a9064dd62b5b"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/audio-normal.png",
+    "sha256": "3cd4ce433cf53550ae72fd355e92ed4f02020895e5d634ba13aa7ad59c466cab"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/audio-selected.png",
+    "sha256": "879a676fffbed033f593678ccf6df59a0188b112ce32d6690b0265ecdc9ca6ab"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/cancel-normal.png",
+    "sha256": "59ce4f2614d06a47406f3e6d2c1098698dedd1c9d97990d3b57737fcbc8f8857"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/cancel-selected.png",
+    "sha256": "cd7fa161bcd97c37a3dd7f30945345f7e8345599287bde6f3d69ae4d0ee097d5"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/captions-normal.png",
+    "sha256": "25edb429d377149f9d62e998820c43c3e1da1baead9ce4c9c98036eb7182c022"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/captions-selected.png",
+    "sha256": "fbac17c8fb9ea9fc645137e155423adfbdefa9b965d6dca2a81ee7ecd0ecd206"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/community-normal.png",
+    "sha256": "1ceeffb2f49460f5cb3c91910ec47461f1952284d1d10b19b332dce67d109033"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/community-selected.png",
+    "sha256": "43533ef25767c7aafd9c9b3cc7fede46a8548542c107fafe2355a219c5328ce3"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/control-normal.png",
+    "sha256": "1e66710ca3a98f7fa5d07945ee3c7eef91fa53edb44ab1fbc431652dc0e2113f"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/control-selected.png",
+    "sha256": "8310da313dee7091dff86ea1cd1c39fd90b436ea04a46d512c0f9239cfb45699"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/devices-normal.png",
+    "sha256": "09262dc3a96339d9936277fbf9fe7b857e774ceed992ea15438c78e5bc6e3f2c"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/devices-selected.png",
+    "sha256": "f3f5141500bee2bd5946a1114f6655ca1d1a67a9cdf1ce3fb9f75804bfefabd1"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/history-normal.png",
+    "sha256": "0404976bf42226acd0af649a341cd20b0371b3505c7bcb63e550cf2ce5f351b6"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/history-selected.png",
+    "sha256": "10b5a0e0e63d71820483bae2bd65f9da69379430c28c6bb898d3bc2241bae5a8"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/home-normal.png",
+    "sha256": "fcde81b3581d4a45dd4289357fb5921d474f9090580e95044d6a01dbfee94244"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/home-selected.png",
+    "sha256": "0dd04c8a20a44e7be78e7ff9a1547b7cc451d52d0451e02d69492cfaec9d1f44"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/keyboard-normal.png",
+    "sha256": "08579e019f0025aa2085d3ce076e53eaf5b45f607f47596d78d9cc9d4447e227"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/keyboard-selected.png",
+    "sha256": "9d48a8043a86ac43a0d50fa83748a8ab7757e1fe68b33fe660bb93c1b8b66c04"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/lights-normal.png",
+    "sha256": "cdcf0046e92aa5e128b0e2feafbaeeae7d9acb12c25b8dedbad27c3712792b8d"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/lights-selected.png",
+    "sha256": "4286849047d50e10de3d3f71fa7cd1b17e2387fc7fdcbeb6f429fc18f221d650"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/mouse-normal.png",
+    "sha256": "7fab8d95d290cce078f15d302e8bc2d54249127edee25f1d680c814519f989db"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/mouse-selected.png",
+    "sha256": "62b9c3d984fb71e6c75c188c89dc20ab3c364b5cb7fcd22de8e092aa25cf9eda"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/play-normal.png",
+    "sha256": "f7cb8344d8b93eb240343a4a827c406fe7e302a152ee088fc2f19968209c52da"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/play-selected.png",
+    "sha256": "54195f7d430c554634c2a0e8d876ecf30cb37f0f14f99bfa45bb86c165c0244b"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/recognition-normal.png",
+    "sha256": "5c702879ef3e1bf2678616343c9b50d952c8688d5d138573cb68394232ec6e21"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/recognition-selected.png",
+    "sha256": "8711581d523106d6ba77be93c92bc9e6c29a3b7360c8395a12f362ec35e36f20"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/refresh-normal.png",
+    "sha256": "fcde81b3581d4a45dd4289357fb5921d474f9090580e95044d6a01dbfee94244"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/refresh-selected.png",
+    "sha256": "0dd04c8a20a44e7be78e7ff9a1547b7cc451d52d0451e02d69492cfaec9d1f44"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/save-normal.png",
+    "sha256": "fcde81b3581d4a45dd4289357fb5921d474f9090580e95044d6a01dbfee94244"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/save-selected.png",
+    "sha256": "0dd04c8a20a44e7be78e7ff9a1547b7cc451d52d0451e02d69492cfaec9d1f44"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/screen-normal.png",
+    "sha256": "979799543c34bb1cf7fc13143983eee40b853667e8965227cc7c801175375d79"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/screen-selected.png",
+    "sha256": "2fb1471305f0a1f7a023acdb1cd9a3dec99d24961f86dfa0373b2168df0e653c"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/voice-normal.png",
+    "sha256": "3ccb52bf9cd7c0bc76d2efa23ebce26679b9cee8be5a111d2dfe4072dbc036da"
+  },
+  {
+    "file": "mhub-community-assistant/panel/themes/smartisan/assets/voice-selected.png",
+    "sha256": "c4c7691b5783d0f4a087994ff1b75d1b0050a18e707515476ff773aeecfa5ae8"
+  }
+]

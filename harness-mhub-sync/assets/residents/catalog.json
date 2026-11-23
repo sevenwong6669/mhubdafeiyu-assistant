@@ -1,0 +1,114 @@
+[
+  {
+    "id": "idle",
+    "label": "待命",
+    "frames": 12,
+    "delay": 840,
+    "crc32": 1677655301
+  },
+  {
+    "id": "waiting",
+    "label": "等待",
+    "frames": 12,
+    "delay": 840,
+    "crc32": 1632000431
+  },
+  {
+    "id": "thinking",
+    "label": "思考",
+    "frames": 12,
+    "delay": 840,
+    "crc32": 373035834
+  },
+  {
+    "id": "working",
+    "label": "工作",
+    "frames": 12,
+    "delay": 840,
+    "crc32": 2728654567
+  },
+  {
+    "id": "working_search",
+    "label": "搜索",
+    "frames": 12,
+    "delay": 840,
+    "crc32": 3775580014
+  },
+  {
+    "id": "working_command",
+    "label": "执行",
+    "frames": 12,
+    "delay": 840,
+    "crc32": 2226622583
+  },
+  {
+    "id": "success",
+    "label": "完成",
+    "frames": 12,
+    "delay": 840,
+    "crc32": 1702542364
+  },
+  {
+    "id": "error",
+    "label": "遇到问题",
+    "frames": 12,
+    "delay": 410,
+    "crc32": 4060519741
+  },
+  {
+    "id": "dragging",
+    "label": "拖动",
+    "frames": 12,
+    "delay": 500,
+    "crc32": 4245245009
+  },
+  {
+    "id": "dragging_release",
+    "label": "放下",
+    "frames": 12,
+    "delay": 170,
+    "crc32": 4079764289
+  },
+  {
+    "id": "head_pat",
+    "label": "摸摸",
+    "frames": 12,
+    "delay": 840,
+    "crc32": 2923176279
+  },
+  {
+    "id": "poke",
+    "label": "戳一戳",
+    "frames": 12,
+    "delay": 840,
+    "crc32": 3982119600
+  },
+  {
+    "id": "tail",
+    "label": "摇尾巴",
+    "frames": 12,
+    "delay": 840,
+    "crc32": 3201447701
+  },
+  {
+    "id": "eat_token",
+    "label": "吃令牌",
+    "frames": 12,
+    "delay": 840,
+    "crc32": 1492140565
+  },
+  {
+    "id": "idle_stretch",
+    "label": "伸懒腰",
+    "frames": 12,
+    "delay": 840,
+    "crc32": 3051865389
+  },
+  {
+    "id": "idle_yawn",
+    "label": "打哈欠",
+    "frames": 12,
+    "delay": 840,
+    "crc32": 3806117347
+  }
+]

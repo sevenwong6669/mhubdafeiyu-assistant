@@ -1,0 +1,397 @@
+/* Every rule is isolated to this skin. panel.css remains the Classic source of truth. */
+html[data-theme="smartisan"]{
+  --ink:#252d36;--muted:#888b8d;--green:#367bc3;--deep:#245b98;--mint:#e5ebf1;
+  --line:#d0cfcc;--paper:#faf9f6;--bg:#e7e6e3;--amber:#9b7134;--amber-bg:#f7f0e4;
+  --shadow:inset 0 1px 0 #fff,0 2px 3px #0000000b,0 7px 19px #36332c12;
+  --sm-panel:linear-gradient(180deg,#fdfdfb,#f3f2ee);
+  --sm-button:linear-gradient(#fff 0%,#f6f5f2 48%,#e9e8e5 100%);
+  --sm-input:inset 0 1px 3px #00000013,0 1px 0 #ffffffd9;
+  --sm-grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.83' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Cpath fill='%23999' opacity='.055' filter='url(%23n)' d='M0 0h120v120H0z'/%3E%3C/svg%3E");
+}
+html[data-theme="smartisan"] body{background:var(--sm-grain),linear-gradient(110deg,#eae9e6,#f1f0ed 52%,#deddd9);color:var(--ink);line-height:1.65;font-family:var(--smartisan-font-family)}
+/* The original appearance components declare their own UI font. Keep them in
+   the same theme stack without touching monospace previews or code styles. */
+html[data-theme="smartisan"] :is(.appearance-open,.appearance-dialog){font-family:var(--smartisan-font-family)}
+html[data-theme="smartisan"] .sidebar{width:236px;padding:30px 17px 22px;border-right:1px solid #c6c5c1;background:var(--sm-grain),linear-gradient(90deg,#f5f4f1,#eae9e5);box-shadow:inset -1px 0 #fff,4px 0 18px #00000008}
+html[data-theme="smartisan"] .brand{flex-direction:column;gap:12px;text-align:center;font-size:27px;font-weight:700;letter-spacing:1px;color:#242e38;line-height:1.2}
+html[data-theme="smartisan"] .brand-fish{display:none}
+html[data-theme="smartisan"] .brand small{font-size:13px;letter-spacing:1px;margin-top:6px;color:#777d83}
+html[data-theme="smartisan"] .smartisan-avatar{display:block;width:188px;height:169px;padding:7px;border:1px solid #c9c8c5;border-radius:17px;background:var(--sm-button);box-shadow:inset 0 1px #fff,0 2px 3px #0002,0 5px 13px #00000012}
+html[data-theme="smartisan"] .smartisan-avatar img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 38%;border:1px solid #d1d1cf;border-radius:11px;background:#fff}
+html[data-theme="smartisan"] .nav-label{font-size:10px;letter-spacing:2px;color:#92918e;margin:30px 12px 14px;text-shadow:0 1px #fff}
+html[data-theme="smartisan"] .sidebar nav{display:grid;gap:9px}
+html[data-theme="smartisan"] .sidebar nav a{display:flex;align-items:center;gap:15px;min-height:53px;padding:12px 17px;border:1px solid transparent;background:transparent;border-radius:10px;color:#646a70;text-shadow:0 1px #fff;font-size:0;box-shadow:none}
+html[data-theme="smartisan"] .sidebar nav a>span:not(.smartisan-nav-icon){font-size:15px;font-weight:550;white-space:nowrap}
+html[data-theme="smartisan"] .sidebar nav a>b{font-size:10px;color:#7d8184;background:#e1e1df;border:1px solid #cececa;box-shadow:inset 0 1px 2px #00000012}
+html[data-theme="smartisan"] .sidebar nav a:hover{background:#e9e9e6;border-color:#d6d5d1}
+html[data-theme="smartisan"] .sidebar nav a.selected{background:linear-gradient(#f6f9fc,#e3e9ef);border-color:#c1c9d0;color:#243e5c;box-shadow:inset 0 1px #fff,0 2px 3px #00000013,0 5px 11px #00000009}
+html[data-theme="smartisan"] .smartisan-nav-icon{display:block;width:27px;height:27px;flex:none;color:#898d8e;filter:drop-shadow(0 1px #fff) drop-shadow(0 -1px #565a5b66)}
+html[data-theme="smartisan"] .smartisan-nav-icon svg{width:100%;height:100%}
+html[data-theme="smartisan"] .selected .smartisan-nav-icon{color:#4b8acb;filter:drop-shadow(0 1px #fff) drop-shadow(0 1px 2px #3276af66)}
+html[data-theme="smartisan"] .sidebar-bottom{border-top:1px solid #d2d1cd;padding-top:18px;color:#72777a;font-size:12px;text-shadow:0 1px #fff}
+html[data-theme="smartisan"] .sidebar-bottom small{color:#94948f;line-height:1.8}
+html[data-theme="smartisan"] .small-dot,html[data-theme="smartisan"] .control-dot.is-ready{background:radial-gradient(circle at 34% 25%,#d6ffc0,#55e62c 38%,#1aab16 75%);box-shadow:inset 0 0 1px #fff,0 0 0 2px #f9fff2,0 0 5px 2px #57b83355}
+html[data-theme="smartisan"] main{margin-left:236px;padding:30px 32px 24px;min-width:0}
+html[data-theme="smartisan"] .topbar{margin-bottom:24px;min-height:62px}
+html[data-theme="smartisan"] h1{font-size:29px;font-weight:700;letter-spacing:1px;color:#202b37;text-shadow:0 1px #fff}
+html[data-theme="smartisan"] .eyebrow{color:#9a9a96;letter-spacing:3px;font-size:10px;text-shadow:0 1px #fff}
+html[data-theme="smartisan"] .header-actions{gap:10px}
+html[data-theme="smartisan"] .stage-badge{font-size:12px;background:linear-gradient(#f8f8f6,#e3e2df);border:1px solid #c5c5c2;color:#666d72;box-shadow:inset 0 1px #fff,0 1px 2px #0001;padding:7px 13px;border-radius:8px}
+html[data-theme="smartisan"] :is(.button,.icon-button,.appearance-open,.appearance-done,.filter-row button,.share-footer button){border:1px solid #bfbfbc;border-bottom-color:#b5b4b0;background:var(--sm-button);color:#424c56;box-shadow:inset 0 1px 0 #fff,0 1px 2px #00000017,0 3px 6px #0000000b;text-shadow:0 1px 0 #fff;border-radius:8px;transition:box-shadow .12s,background .12s;cursor:pointer}
+html[data-theme="smartisan"] .button{padding:10px 18px;font-size:13px;font-weight:550}
+html[data-theme="smartisan"] :is(.button,.icon-button,.appearance-open,.appearance-done,.filter-row button):hover:not(:disabled){background:linear-gradient(#fff,#f0f0ed);border-color:#a9b3bd}
+html[data-theme="smartisan"] :is(.button,.icon-button,.appearance-open,.appearance-done,.filter-row button):active:not(:disabled){background:linear-gradient(#dededa,#eeede9);box-shadow:inset 0 2px 4px #00000020,0 1px #fff;transform:translateY(1px)}
+html[data-theme="smartisan"] :is(.button,.icon-button):disabled{color:#9b9d9e;opacity:.55;box-shadow:inset 0 1px #fff;cursor:not-allowed;text-shadow:0 1px #fff}
+html[data-theme="smartisan"] .button:not(.outline):not(.ghost):not([data-command="game-stop"]):not([data-command="voice-stop"]):not([data-command="sync-stop"]){background:linear-gradient(#8dbaf2,#6196d5 50%,#4e84c4);border-color:#5985bc;color:#fff;text-shadow:0 1px 1px #274b7a;box-shadow:inset 0 1px 1px #d6e7ff,0 1px 2px #0002,0 3px 7px #22477320}
+html[data-theme="smartisan"] .button:not(.outline):not(.ghost):active:not(:disabled){background:linear-gradient(#4a79b4,#5d90ce);box-shadow:inset 0 2px 4px #223b5c55}
+html[data-theme="smartisan"] .appearance-open{font-size:12px;padding:8px 15px}
+html[data-theme="smartisan"] .icon-button{width:38px;height:38px;font-size:23px}
+html[data-theme="smartisan"] :is(.appearance-open,.stage-badge){height:38px;display:inline-flex;align-items:center;justify-content:center;padding-top:0;padding-bottom:0;white-space:nowrap}
+html[data-theme="smartisan"] :is(button,a,input,select,textarea):focus-visible{outline:3px solid #6e9ed5;outline-offset:3px}
+html[data-theme="smartisan"] :is(.control-tabs,.control-subtabs){display:flex;flex-wrap:wrap;border:1px solid #c9c8c4;border-radius:12px;background:var(--sm-grain),linear-gradient(#fdfcf9,#e5e4e0);padding:4px;gap:0;box-shadow:inset 0 1px #fff,0 2px 3px #00000012,0 6px 12px #0000000a;margin:0 0 22px}
+html[data-theme="smartisan"] .control-tabs button{flex:1;display:flex;align-items:center;justify-content:center;gap:9px;min-height:49px;border:1px solid transparent;border-radius:9px;padding:10px 12px;color:#6a6c6e;font-size:14px;font-weight:550;text-shadow:0 1px #fff;position:relative;white-space:nowrap}
+html[data-theme="smartisan"] .control-tabs button+button:before{content:"";position:absolute;left:-1px;height:24px;width:1px;background:#cfceca;box-shadow:1px 0 #fff}
+html[data-theme="smartisan"] .control-tabs button.selected{border-color:#cac9c5;background:linear-gradient(#fff,#f8f7f4);color:#2468a8;box-shadow:inset 0 1px #fff,0 1px 3px #0001,0 3px 7px #00000009;z-index:1}
+html[data-theme="smartisan"] .control-tabs button.selected:before,html[data-theme="smartisan"] .control-tabs button.selected+button:before{opacity:0}
+html[data-theme="smartisan"] .smartisan-tab-icon{display:inline-block;width:23px;height:23px;flex:none;font-weight:400;line-height:1;color:#8d9192;filter:drop-shadow(0 1px #fff)}
+html[data-theme="smartisan"] .smartisan-tab-icon svg{display:block;width:100%;height:100%}
+html[data-theme="smartisan"] .selected .smartisan-tab-icon{color:#3784c9}
+html[data-theme="smartisan"] .control-subtabs{max-width:650px;margin-bottom:25px;padding:3px;border-radius:8px}
+html[data-theme="smartisan"] .control-subtabs button{flex:1;font-size:12px;padding:9px 14px;color:#7a7d7e;border-radius:5px}
+html[data-theme="smartisan"] .control-subtabs button.selected{background:linear-gradient(#fff,#efefec);color:#396d9e;box-shadow:0 1px 3px #0002,inset 0 1px #fff}
+html[data-theme="smartisan"] :is(.card,.share-card,.toolbar,.task-light-card){background:var(--sm-grain),var(--sm-panel);border:1px solid #cfceca;border-radius:13px;box-shadow:var(--shadow)}
+html[data-theme="smartisan"] .card{padding:25px}
+html[data-theme="smartisan"] .control-form{padding:24px!important}
+html[data-theme="smartisan"] :is(.section-title,.section-header h2,.control-section-heading h2,.control-play h2,.control-form h2){color:#303b45;font-size:17px;font-weight:650;text-shadow:0 1px #fff}
+html[data-theme="smartisan"] .section-header{margin:24px 0 17px;gap:16px}
+html[data-theme="smartisan"] .control-tabs+.section-header,html[data-theme="smartisan"] .control-subtabs+.section-header,html[data-theme="smartisan"] #content>.section-header:first-child{margin-top:0}
+html[data-theme="smartisan"] :is(.section-header p,.control-muted,.control-field small,.control-live,.info-note,.source-line,.share-author,.share-tags,.result-caption,.control-health small,.control-health span:not(.control-dot),.clock-date,.system-clock>small,.audio-select strong,.caption-preview>small,.voice-model p){color:#8a8c8d}
+html[data-theme="smartisan"] .control-muted{font-size:12px!important;line-height:1.8}
+html[data-theme="smartisan"] .control-group{border-color:#d5d4d0;border-radius:9px;background:#ffffff55;box-shadow:inset 0 1px 3px #00000004,0 1px #fff;margin:22px 0}
+html[data-theme="smartisan"] .control-group legend{color:#636e77;font-size:13px;text-shadow:0 1px #fff}
+html[data-theme="smartisan"] .control-field{border-color:#deddd9;box-shadow:0 1px 0 #ffffffbb}
+html[data-theme="smartisan"] .control-field:last-child{box-shadow:none}
+html[data-theme="smartisan"] .control-field strong{color:#4c5863;font-size:13px}
+html[data-theme="smartisan"] input:not([type=checkbox]):not([type=range]):not([type=color]),html[data-theme="smartisan"] select,html[data-theme="smartisan"] textarea{border:1px solid #c4c5c3;border-top-color:#b6b8b6;border-radius:7px;background:linear-gradient(#f7f7f5,#fff);color:#3c4853;box-shadow:var(--sm-input);padding:9px 11px;font-family:inherit}
+html[data-theme="smartisan"] select{background:linear-gradient(#fff,#f1f0ec);border-color:#c7c7c3;box-shadow:inset 0 1px #fff,0 1px 2px #00000010;padding-right:24px}
+html[data-theme="smartisan"] input[type=color]{border:1px solid #bbbebb;border-radius:8px;background:linear-gradient(#fff,#eeedea);box-shadow:inset 0 1px #fff,0 1px 2px #0001;padding:5px;height:39px;cursor:pointer}
+html[data-theme="smartisan"] input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+html[data-theme="smartisan"] input[type=color]::-webkit-color-swatch{border:1px solid #0001;border-radius:3px;box-shadow:inset 0 1px 2px #00000025}
+html[data-theme="smartisan"] input[type=checkbox]{accent-color:#5a8fc8;width:18px;height:18px;cursor:pointer;filter:drop-shadow(0 1px #fff)}
+html[data-theme="smartisan"] .task-light-grid{gap:16px;margin:20px 0}
+html[data-theme="smartisan"] .task-light-card{padding:18px 18px 15px;min-width:0;position:relative;box-shadow:inset 0 1px 1px #fff,0 2px 3px #00000015,0 5px 12px #00000009}
+html[data-theme="smartisan"] .task-light-card:after{content:"";position:absolute;right:17px;top:19px;width:7px;height:7px;border-radius:50%;border:1px solid #bebfbb;background:linear-gradient(#c7c8c4,#eee);box-shadow:0 1px #fff}
+html[data-theme="smartisan"] .task-light-card h3{font-size:20px;gap:15px;margin:0 0 10px;padding:0 0 0 3px;color:#25323e}
+html[data-theme="smartisan"] .task-light-card h3 i{display:block;position:relative;width:26px;height:26px;flex:none;border:1px solid #fff;border-radius:50%;background:radial-gradient(circle at 33% 22%,#ffffffed 0,transparent 32%),radial-gradient(circle at 50% 35%,var(--state-color),color-mix(in srgb,var(--state-color),#111 25%))!important;box-shadow:inset 0 -2px 3px #0002,0 0 0 4px #f5f5f0,0 0 0 5px color-mix(in srgb,var(--state-color),#fff 55%),0 2px 6px 5px color-mix(in srgb,var(--state-color) 28%,transparent)}
+html[data-theme="smartisan"] .task-light-card h3 i:after{content:"";position:absolute;inset:1px 2px auto;height:8px;border-radius:50%;background:linear-gradient(#ffffff65,transparent)}
+html[data-theme="smartisan"] .task-light-card>p{margin:6px 0 15px;min-height:22px;padding-left:44px;font-size:11px!important}
+html[data-theme="smartisan"] .task-card-group{border-top:1px solid #dcdbd7;box-shadow:0 -1px #fff;padding-top:8px;margin-top:10px}
+html[data-theme="smartisan"] .task-card-group h4{font-size:10px;font-weight:500;letter-spacing:1px;color:#9a9b97;margin-bottom:7px}
+html[data-theme="smartisan"] .task-card-group:first-of-type{display:flex;flex-direction:column}
+html[data-theme="smartisan"] .task-card-group:first-of-type h4{order:-1}
+html[data-theme="smartisan"] .task-card-group label:has([name$=".color"]){order:0}
+html[data-theme="smartisan"] .smartisan-brightness{order:1}
+html[data-theme="smartisan"] .task-card-group label:has([name$=".effect"]){order:2}
+html[data-theme="smartisan"] .task-card-group label:has([name$=".speed"]){order:3}
+html[data-theme="smartisan"] .task-light-card label{margin:0;padding:7px 0;border-bottom:1px solid #e0dfdb;box-shadow:0 1px #ffffffcc;font-size:13px;gap:9px;min-height:43px}
+html[data-theme="smartisan"] .task-light-card label:last-child{border-bottom:0;box-shadow:none}
+html[data-theme="smartisan"] .task-light-card :is(input,select){max-width:none;width:65%;padding:7px 9px;font-size:13px}
+html[data-theme="smartisan"] .task-light-card input[type=color]{max-width:170px;width:65%;height:34px;padding:4px}
+html[data-theme="smartisan"] .task-light-card input[type=number]{width:65%;min-width:45px}
+html[data-theme="smartisan"] .task-light-card label.smartisan-brightness{display:grid;grid-template-columns:auto 54px minmax(65px,1fr);gap:10px}
+html[data-theme="smartisan"] .task-light-card .smartisan-brightness input[type=number]{width:54px;text-align:center;padding:6px 2px;appearance:textfield}
+html[data-theme="smartisan"] .smartisan-brightness input[type=number]::-webkit-inner-spin-button{display:none}
+html[data-theme="smartisan"] .task-light-card input.smartisan-range{display:block;appearance:none;height:8px;width:100%;padding:0;margin:0;min-width:0;border:1px solid #b6b7b5;border-radius:8px;box-shadow:inset 0 1px 2px #0003,0 1px #fff;background:linear-gradient(90deg,var(--state-color) 0 var(--fill),#cbcaca var(--fill) 100%);cursor:pointer}
+html[data-theme="smartisan"] .smartisan-range::-webkit-slider-thumb{appearance:none;width:21px;height:21px;border-radius:50%;border:1px solid color-mix(in srgb,var(--state-color),#aaa 50%);background:linear-gradient(#fff 5%,#f6f6f3 50%,#d7d7d3);box-shadow:inset 0 1px #fff,0 1px 2px #0004,0 0 0 1px #fff8}
+html[data-theme="smartisan"] .smartisan-range::-moz-range-thumb{width:20px;height:20px;border-radius:50%;border:1px solid #9fa9b3;background:linear-gradient(#fff,#dededb);box-shadow:0 1px 3px #0004}
+html[data-theme="smartisan"] .task-light-card>.button{margin-top:14px;min-height:37px;background:linear-gradient(#fff,#e7e6e2);font-size:13px}
+html[data-theme="smartisan"] .task-light-card>.button:before{content:"▶";display:inline-block;color:#7f8588;font-size:10px;margin-right:9px;text-shadow:0 1px #fff}
+html[data-theme="smartisan"] .card:has(>.task-light-grid)>.control-form-footer{border:1px solid #d0cfcb;border-radius:9px;padding:13px 15px;background:linear-gradient(#fbfaf7,#eae9e5);box-shadow:inset 0 1px #fff,0 2px 5px #0000000b;justify-content:flex-end;gap:12px;margin-top:18px}
+html[data-theme="smartisan"] .card:has(>.task-light-grid)>.control-form-footer .button{font-size:13px;padding:10px 20px}
+html[data-theme="smartisan"] .card:has(>.task-light-grid)>.control-form-footer .button:first-child:before{content:"▣";margin-right:8px}
+html[data-theme="smartisan"] #content:has(.task-light-grid){display:flex;flex-direction:column}
+html[data-theme="smartisan"] .sync-device-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0}
+html[data-theme="smartisan"] .sync-device{padding:13px 10px;border:1px solid #d1d1cd;border-radius:8px;background:linear-gradient(#f1f1ee,#f8f7f4);box-shadow:inset 0 1px 3px #00000009,0 1px #fff;gap:10px}
+html[data-theme="smartisan"] .sync-device:has(input:checked){background:linear-gradient(#f7faff,#edf1f6);border-color:#b6c5d4;box-shadow:inset 0 1px #fff,0 1px 3px #0000000c}
+html[data-theme="smartisan"] .sync-device strong{font-size:13px;color:#475562}
+html[data-theme="smartisan"] .sync-device small{font-size:10px;color:#929797}
+html[data-theme="smartisan"] :is(.tag,.status-pill,.device-pill,.badge-number,.fact){border:1px solid #d3d3ce;background:linear-gradient(#f5f5f2,#e9e9e5);color:#7c858c;box-shadow:inset 0 1px #fff;border-radius:5px}
+html[data-theme="smartisan"] :is(.tag.amber,.detail-warnings){color:#957548;background:#f6f1e7;border-color:#dfd3bd}
+html[data-theme="smartisan"] .control-details{border-color:#d1d0cc;background:#eeede9;color:#81878b;box-shadow:inset 0 1px 2px #00000006,0 1px #fff}
+html[data-theme="smartisan"] .control-details summary{color:#737c84}
+html[data-theme="smartisan"] .control-health strong{color:#465866;font-weight:600}
+html[data-theme="smartisan"] .control-health .control-dot{width:11px;height:11px;margin-top:5px;flex:none}
+html[data-theme="smartisan"] .control-welcome h2{color:#303b45}
+html[data-theme="smartisan"] .control-welcome h2 span{color:#4a7eac}
+html[data-theme="smartisan"] :is(.control-welcome p,.control-play-groups>div>strong){color:#8b8f90}
+html[data-theme="smartisan"] .hero{background:var(--sm-grain),linear-gradient(120deg,#fafaf8,#e6e7e6);border:1px solid #ccc;box-shadow:var(--shadow);border-radius:13px}
+html[data-theme="smartisan"] .hero:after{filter:grayscale(1);opacity:.15}
+html[data-theme="smartisan"] .hero h2{color:#3e4c58;text-shadow:0 1px #fff}
+html[data-theme="smartisan"] .hero p,html[data-theme="smartisan"] .hero-time{color:#929897}
+html[data-theme="smartisan"] .stat strong,html[data-theme="smartisan"] .balance-numbers strong{color:#4d647a;text-shadow:0 1px #fff}
+html[data-theme="smartisan"] :is(.bar,.balance-segments){background:#d7d8d5;border:1px solid #bfc2bf;box-shadow:inset 0 1px 3px #0002,0 1px #fff}
+html[data-theme="smartisan"] .bar i{background:linear-gradient(#a1bfe0,#6593bc);border-radius:3px;box-shadow:inset 0 1px #ffffff88}
+html[data-theme="smartisan"] .balance-segments{padding:5px;height:32px;border-radius:6px}
+html[data-theme="smartisan"] .balance-segments i{box-shadow:inset 0 1px #fff7,0 0 2px #0002;border-radius:2px}
+html[data-theme="smartisan"] .balance-numbers small,html[data-theme="smartisan"] .balance-live p{color:#8b9499}
+html[data-theme="smartisan"] :is(.info-note,.note-panel,.proposal){background:#eeefec;border:1px solid #d3d4cf;border-radius:8px;color:#8b9193;box-shadow:inset 0 1px 2px #00000008,0 1px #fff}
+html[data-theme="smartisan"] .proposal{color:#6c808b}
+html[data-theme="smartisan"] .device-symbol{color:#7c8e9e;background:linear-gradient(#fafbfc,#dfe3e6);border:1px solid #c3cbd2;box-shadow:inset 0 1px #fff,0 2px 4px #0001}
+html[data-theme="smartisan"] .device-card h3,html[data-theme="smartisan"] .share-name{color:#485969}
+html[data-theme="smartisan"] .share-footer{border-color:#d7d8d3;color:#959b9d}
+html[data-theme="smartisan"] .share-footer button{padding:4px 9px;font-size:10px}
+html[data-theme="smartisan"] .connection{border-color:#dddeda;color:#626f77}
+html[data-theme="smartisan"] .connection-icon{background:#e4e6e3;color:#8296a7;border:1px solid #cdd2d3;box-shadow:inset 0 1px 2px #00000009}
+html[data-theme="smartisan"] .filter-row button{padding:7px 14px;border-radius:6px}
+html[data-theme="smartisan"] .filter-row button.active{background:linear-gradient(#81a9d4,#628fbf);color:#fff;border-color:#668bb2;text-shadow:0 1px #547391}
+html[data-theme="smartisan"] .empty{background:#eeefeb;border-color:#cdd0c9;color:#9a9e9c;box-shadow:inset 0 1px 3px #00000008}
+html[data-theme="smartisan"] .empty strong{color:#657781}
+html[data-theme="smartisan"] .log-row{border-color:#d6d9d4;color:#869092}
+html[data-theme="smartisan"] .log-row b{color:#687e8e}
+html[data-theme="smartisan"] .clock-device-preview{background:linear-gradient(#4e5559,#373e44);border:1px solid #1b232b;box-shadow:inset 0 3px 6px #0006,0 1px #fff;color:#d9e9f2;text-shadow:0 0 4px #76bbdb66;border-radius:7px}
+html[data-theme="smartisan"] .voice-model-name{color:#4a7393}
+html[data-theme="smartisan"] .system-clock>strong{color:#586874;font-variant-numeric:tabular-nums;text-shadow:0 1px #fff}
+html[data-theme="smartisan"] .drawer{background:var(--sm-grain),var(--sm-panel);border-left:1px solid #bfbfbb;box-shadow:-8px 0 35px #0002}
+html[data-theme="smartisan"] .scrim{background:#26333f66;backdrop-filter:blur(2px)}
+html[data-theme="smartisan"] .share-code{background:#f5f5f3;border-color:#c9ccc7;box-shadow:var(--sm-input)}
+html[data-theme="smartisan"] #notice:not(:empty){background:#f8f3e9;border:1px solid #dac9ac;color:#92784f;box-shadow:inset 0 1px #fff,0 2px 4px #0001}
+html[data-theme="smartisan"] #toast{background:linear-gradient(#5d6973,#35424f);border:1px solid #253340;box-shadow:inset 0 1px #89939b,0 5px 18px #0003;border-radius:9px;color:#f8fbff}
+html[data-theme="smartisan"] footer{color:#a2a39f;text-shadow:0 1px #fff}
+html[data-theme="smartisan"] .appearance-dialog{background:var(--sm-grain),var(--sm-panel);border:1px solid #bdbebc;box-shadow:inset 0 1px #fff,0 20px 70px #0004;color:#35434f}
+html[data-theme="smartisan"] .appearance-heading small,html[data-theme="smartisan"] .appearance-description{color:#949b9b}
+html[data-theme="smartisan"] .appearance-choice{background:linear-gradient(#fff,#eeede9);border-color:#d3d3ce;box-shadow:inset 0 1px #fff,0 2px 5px #0001}
+html[data-theme="smartisan"] .appearance-choice[aria-pressed=true]{border-color:#6c9dc9;box-shadow:inset 0 1px #fff,0 0 0 3px #6c9dc91a,0 2px 6px #0001}
+html[data-theme="smartisan"] .appearance-check,html[data-theme="smartisan"] .appearance-status{color:#4d86b5}
+html[data-theme="smartisan"] .appearance-footer{border-color:#d3d3ce}
+html[data-theme="smartisan"] .appearance-done{padding:9px 25px;color:#405b72}
+@media(min-width:1700px){html[data-theme="smartisan"] main{padding:32px 40px 28px}html[data-theme="smartisan"] .sidebar{width:254px;padding-top:32px}html[data-theme="smartisan"] main{margin-left:254px}html[data-theme="smartisan"] .smartisan-avatar{width:198px;height:179px}html[data-theme="smartisan"] .task-light-card{padding:22px}}
+@media(max-width:1320px){html[data-theme="smartisan"] .sidebar{width:204px;padding:24px 13px}html[data-theme="smartisan"] main{margin-left:204px;padding:25px 24px}html[data-theme="smartisan"] .smartisan-avatar{width:164px;height:148px}html[data-theme="smartisan"] .brand{font-size:24px}html[data-theme="smartisan"] .brand small{font-size:11px}html[data-theme="smartisan"] .control-tabs button{font-size:12px;gap:6px;padding:10px 9px}html[data-theme="smartisan"] .smartisan-tab-icon{font-size:20px}html[data-theme="smartisan"] .task-light-card{padding:16px 12px}html[data-theme="smartisan"] .task-light-card h3{font-size:18px}html[data-theme="smartisan"] .task-light-card label{font-size:12px}html[data-theme="smartisan"] .task-light-card>p{padding-left:0;font-size:11px!important}html[data-theme="smartisan"] .task-light-card label.smartisan-brightness{gap:7px;grid-template-columns:auto 48px minmax(54px,1fr)}html[data-theme="smartisan"] .task-light-card .smartisan-brightness input[type=number]{width:48px}html[data-theme="smartisan"] .sync-device strong{font-size:12px}}
+@media(max-width:1100px){html[data-theme="smartisan"] .task-light-grid{grid-template-columns:repeat(2,minmax(0,1fr))}html[data-theme="smartisan"] .sync-device-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){html[data-theme="smartisan"] .sidebar{width:auto;position:sticky;padding:10px 14px;flex-direction:row;gap:12px;border-right:0;border-bottom:1px solid #c8c8c4}html[data-theme="smartisan"] .brand{flex-direction:row;font-size:15px;gap:8px;flex:none}html[data-theme="smartisan"] .smartisan-avatar{width:42px;height:42px;padding:3px;border-radius:9px}html[data-theme="smartisan"] .smartisan-avatar img{border-radius:5px}html[data-theme="smartisan"] .sidebar nav{display:flex;gap:3px}html[data-theme="smartisan"] .sidebar nav a{min-height:38px;padding:7px;gap:5px}html[data-theme="smartisan"] .smartisan-nav-icon{width:19px;height:19px}html[data-theme="smartisan"] .sidebar nav a>span:not(.smartisan-nav-icon){font-size:10px}html[data-theme="smartisan"] main{margin-left:0;padding:20px 16px}html[data-theme="smartisan"] .control-tabs button{flex:1 1 30%;font-size:12px}html[data-theme="smartisan"] .task-light-grid{grid-template-columns:1fr}html[data-theme="smartisan"] .card{padding:20px}html[data-theme="smartisan"] .control-form{padding:19px!important}html[data-theme="smartisan"] .task-light-card{padding:20px}html[data-theme="smartisan"] .sync-device-grid{grid-template-columns:1fr 1fr}html[data-theme="smartisan"] .sidebar nav a>b{display:none}}
+@media(max-width:520px){html[data-theme="smartisan"] .sidebar nav a>span:not(.smartisan-nav-icon){display:none}html[data-theme="smartisan"] .sync-device-grid{grid-template-columns:1fr}html[data-theme="smartisan"] .stage-badge{display:none}html[data-theme="smartisan"] .control-form-footer{flex-wrap:wrap}html[data-theme="smartisan"] .header-actions{gap:7px}}
+
+@media(max-width:1320px) and (min-width:761px){html[data-theme="smartisan"] .sidebar nav a{padding:10px 12px;gap:10px}html[data-theme="smartisan"] .sidebar nav a>span:not(.smartisan-nav-icon){font-size:14px}html[data-theme="smartisan"] .smartisan-nav-icon{width:24px;height:24px}html[data-theme="smartisan"] .sidebar nav a>b{font-size:9px;padding:2px 5px}}
+
+/* Original Smartisan artwork. PNG bytes and aspect ratios are preserved; the
+   optical box only removes transparent padding at display time. Other skins
+   retain their SVGs, symbols and layout, including after repeated switching. */
+html[data-theme="smartisan"]{--muted:#6b747a;--sm-icon-selected:brightness(0) saturate(100%) invert(43%) sepia(26%) saturate(1152%) hue-rotate(171deg) brightness(88%) contrast(91%)}
+html[data-theme="smartisan"] .sm-art-glyph[hidden]{display:inline-block}
+html[data-theme="smartisan"] .sm-art-glyph{position:relative;width:17px;height:17px;flex:0 0 auto;overflow:hidden;vertical-align:middle;pointer-events:none;isolation:isolate}
+html[data-theme="smartisan"] .sm-art-glyph img{position:absolute;width:var(--sm-image-width);height:var(--sm-image-height);max-width:none;left:var(--sm-image-left);top:var(--sm-image-top);object-fit:contain;display:none;filter:brightness(.61) contrast(1.04);user-select:none}
+html[data-theme="smartisan"] .sm-art-glyph img[data-sm-state="normal"]{display:block}
+html[data-theme="smartisan"] .sm-art-glyph[data-sm-mask="true"] img{filter:invert(.48)}
+html[data-theme="smartisan"] .sm-art-host>svg{display:none}
+html[data-theme="smartisan"] :is(.smartisan-nav-icon,.smartisan-tab-icon).sm-art-host{display:inline-flex;align-items:center;justify-content:center;filter:none}
+html[data-theme="smartisan"] .sm-art-glyph[data-sm-kind="nav"]{width:27px;height:27px}
+html[data-theme="smartisan"] .sm-art-glyph[data-sm-kind="tab"]{width:23px;height:23px}
+html[data-theme="smartisan"] .device-pill i.sm-art-target{font-size:0;display:inline-flex;align-items:center;justify-content:center}
+html[data-theme="smartisan"] .sm-art-glyph[data-sm-kind="pill"]{width:16px;height:16px}
+html[data-theme="smartisan"] button.sm-art-target:not([data-view]):not([data-tab]){display:inline-flex;align-items:center;justify-content:center;gap:8px}
+html[data-theme="smartisan"] .control-subtabs button.sm-art-target{display:flex;align-items:center;justify-content:center;gap:8px}
+html[data-theme="smartisan"] .control-subtabs .sm-art-glyph{width:19px;height:19px}
+html[data-theme="smartisan"] button.sm-art-target:hover:not(:disabled) .sm-art-glyph img[data-sm-state="normal"]{filter:brightness(.52) contrast(1.04)}
+html[data-theme="smartisan"] button.sm-art-target:is(.selected,.active,[aria-pressed="true"]) .sm-art-glyph img{display:none}
+html[data-theme="smartisan"] button.sm-art-target:is(.selected,.active,[aria-pressed="true"]) .sm-art-glyph img[data-sm-state="selected"]{display:block;filter:var(--sm-icon-selected)}
+html[data-theme="smartisan"] button.sm-art-target:is(.selected,.active,[aria-pressed="true"]) .sm-art-glyph:is([data-sm-icon="knowledge"],[data-sm-icon="balance"],[data-sm-icon="history"]) img[data-sm-state="selected"]{filter:brightness(.66) sepia(1) saturate(3) hue-rotate(162deg)}
+html[data-theme="smartisan"] button.sm-art-target:active:not(:disabled) .sm-art-glyph img{display:none}
+html[data-theme="smartisan"] button.sm-art-target:active:not(:disabled) .sm-art-glyph img[data-sm-state="pressed"]{display:block;filter:var(--sm-icon-selected);transform:translateY(1px)}
+html[data-theme="smartisan"] .button.sm-art-target:not(.outline):not(.ghost):not([data-command="game-stop"]):not([data-command="voice-stop"]):not([data-command="sync-stop"]) .sm-art-glyph img{filter:brightness(0) invert(1);opacity:.95}
+html[data-theme="smartisan"] .sm-art-target:disabled .sm-art-glyph{opacity:.6}
+html[data-theme="smartisan"] button.icon-button.sm-art-target[data-action]{font-size:0;line-height:1;gap:0;padding:0;display:inline-flex;align-items:center;justify-content:center}
+html[data-theme="smartisan"] .icon-button .sm-art-glyph{width:21px;height:21px}
+html[data-theme="smartisan"] .sm-art-symbol-label{font-size:0!important}
+html[data-theme="smartisan"] .sm-art-symbol-label>.sm-art-label[hidden]{display:inline;font-size:13px}
+html[data-theme="smartisan"] .task-light-card>.button.sm-art-target:before,
+html[data-theme="smartisan"] .card:has(>.task-light-grid)>.control-form-footer .button.sm-art-target:before{content:none}
+html[data-theme="smartisan"] :is(.device-symbol,.connection-icon).sm-art-target{font-size:0;display:flex;align-items:center;justify-content:center}
+html[data-theme="smartisan"] .sm-art-glyph[data-sm-kind="device"]{width:28px;height:28px}
+html[data-theme="smartisan"] .sm-art-glyph[data-sm-kind="connection"]{width:23px;height:23px}
+html[data-theme="smartisan"] .sidebar nav a{gap:14px}
+html[data-theme="smartisan"] .control-tabs button{gap:8px}
+html[data-theme="smartisan"] :is(.control-muted,.control-welcome p,.control-play-groups>div>strong,.control-form label small,.sync-device small,.sidebar-bottom small,.appearance-description,.appearance-heading small){color:#6b747a}
+html[data-theme="smartisan"] :is(.task-card-group h4,.task-light-card>p,.balance-numbers small,.balance-live p,.share-footer,.log-row){color:#737b80}
+html[data-theme="smartisan"] .control-buttons{row-gap:10px}
+@media(max-width:1320px) and (min-width:761px){html[data-theme="smartisan"] .sm-art-glyph[data-sm-kind="nav"]{width:24px;height:24px}html[data-theme="smartisan"] .control-tabs button{gap:6px}}
+@media(max-width:760px){html[data-theme="smartisan"] .sm-art-glyph[data-sm-kind="nav"]{width:19px;height:19px}html[data-theme="smartisan"] .sidebar nav a{gap:5px}}
+
+/* Equal ceramic surfaces and aligned control modules, independent of content length. */
+html[data-theme="smartisan"] .control-runtime-grid{align-items:stretch}
+html[data-theme="smartisan"] .control-runtime-grid>.card{margin:0;min-width:0;display:flex;flex-direction:column;background:var(--sm-grain),var(--sm-panel);box-shadow:var(--shadow)}
+html[data-theme="smartisan"] .control-runtime-grid .control-section-heading{min-height:32px;margin-bottom:0;align-items:center}
+html[data-theme="smartisan"] .control-runtime-grid>.card>p{margin:11px 0 0;min-height:44px;color:#6b747a;font-size:12px;line-height:1.8}
+html[data-theme="smartisan"] .sm-runtime-caption[hidden]{display:block}
+html[data-theme="smartisan"] .control-runtime-grid>.card>.control-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px;align-items:stretch}
+html[data-theme="smartisan"] .control-runtime-grid .control-buttons>.button{min-width:0;min-height:42px;line-height:1.5;padding:9px 12px}
+html[data-theme="smartisan"] .control-runtime-grid .control-buttons>.button:last-child{grid-column:1/-1}
+
+/* Hardware glyphs, original Smartisan status artwork, and a legible transport key. */
+html[data-theme="smartisan"] .sm-art-glyph[data-sm-painted="true"] img{filter:none}
+html[data-theme="smartisan"] .sm-art-glyph[data-sm-kind="device"][data-sm-painted="true"]{width:36px;height:36px}
+html[data-theme="smartisan"] .task-light-card h3 i.sm-art-target{width:32px;height:32px;border:0;border-radius:0;background:none!important;box-shadow:none;display:inline-flex;align-items:center;justify-content:center}
+html[data-theme="smartisan"] .sm-art-glyph[data-sm-kind="status"]{width:32px;height:32px}
+html[data-theme="smartisan"] .task-light-card h3 i.sm-art-target:after{content:none}
+html[data-theme="smartisan"] .task-light-card h3{gap:12px;padding-left:0}
+html[data-theme="smartisan"] .task-light-card>p{padding-left:44px;min-height:40px}
+html[data-theme="smartisan"] .task-light-card label:has(input[type="color"]){justify-content:flex-start}
+html[data-theme="smartisan"] .task-light-card input[type="color"]{flex:none;width:38px;max-width:38px;height:29px;padding:4px;margin-left:auto;cursor:pointer;border-radius:6px;background:linear-gradient(#fdfdfb,#e7e8e4);box-shadow:inset 0 1px #fff,0 1px 2px #0001}
+html[data-theme="smartisan"] .task-light-card input[type="color"]::-webkit-color-swatch{border:1px solid #0003;border-radius:3px;box-shadow:inset 0 1px 2px #0002}
+html[data-theme="smartisan"] .sm-color-value[hidden]{display:inline-block;min-width:70px;color:#59656d;font:12px/1.5 Consolas,monospace;letter-spacing:.2px}
+html[data-theme="smartisan"] .sm-art-glyph[data-sm-icon="play"]{width:24px;height:24px}
+html[data-theme="smartisan"] button.sm-art-target:hover:not(:disabled) .sm-art-glyph[data-sm-icon="play"] img[data-sm-state="normal"],
+html[data-theme="smartisan"] button.sm-art-target:active:not(:disabled) .sm-art-glyph[data-sm-icon="play"] img[data-sm-state="pressed"]{filter:none}
+html[data-theme="smartisan"] .task-light-card>.button.sm-art-target{min-height:43px;gap:9px;border-radius:7px;border-color:#b7bcbf;background:linear-gradient(#fff,#edeeea);box-shadow:inset 0 1px #fff,0 1px 2px #0002,0 3px 5px #00000009}
+html[data-theme="smartisan"] .task-light-card>.button.sm-art-target:hover:not(:disabled){border-color:#91a8b8;background:linear-gradient(#fff,#e9edf0)}
+html[data-theme="smartisan"] .task-light-card>.button.sm-art-target:active:not(:disabled){background:linear-gradient(#dce2e4,#edf0ed);box-shadow:inset 0 2px 4px #0002,0 1px #fff}
+@media(min-width:1800px){html[data-theme="smartisan"] .control-runtime-grid>.card>.control-buttons{grid-template-columns:repeat(3,minmax(0,1fr))}html[data-theme="smartisan"] .control-runtime-grid .control-buttons>.button:last-child{grid-column:auto}}
+@media(max-width:760px){html[data-theme="smartisan"] .control-runtime-grid>.card>p{min-height:0}html[data-theme="smartisan"] .task-light-card>p{padding-left:0;min-height:0}}
+
+/* Smartisan popup: quick lift on entry, shorter retreat on exit. */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-theme="smartisan"] :is(.button,.icon-button,.appearance-open,.appearance-done,.appearance-close,.filter-row button,.share-footer button,nav a,.control-tabs button,.control-subtabs button) {
+    transition: transform 150ms cubic-bezier(.22,.61,.36,1), box-shadow 150ms ease-out,
+      border-color 150ms ease-out, color 150ms ease-out;
+  }
+  html[data-theme="smartisan"] :is(nav a,.control-tabs button,.control-subtabs button,.appearance-close,.share-footer button):active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  html[data-theme="smartisan"] .appearance-dialog[open] {
+    animation: sm-popup-enter 150ms cubic-bezier(.22,.61,.36,1);
+  }
+  html[data-theme="smartisan"] .appearance-dialog[open]::backdrop {
+    animation: sm-backdrop-enter 150ms ease-out;
+  }
+  @supports (transition-behavior: allow-discrete) {
+    html[data-theme="smartisan"] .appearance-dialog {
+      opacity: 0;
+      translate: 0 8px;
+      scale: .985;
+      transition: opacity 100ms ease-in, translate 100ms ease-in, scale 100ms ease-in,
+        display 100ms allow-discrete, overlay 100ms allow-discrete;
+    }
+    html[data-theme="smartisan"] .appearance-dialog[open] {
+      opacity: 1;
+      translate: none;
+      scale: none;
+      animation: none;
+      transition-duration: 150ms;
+      transition-timing-function: cubic-bezier(.22,.61,.36,1);
+    }
+    @starting-style {
+      html[data-theme="smartisan"] .appearance-dialog[open] {
+        opacity: 0;
+        translate: 0 8px;
+        scale: .985;
+      }
+    }
+  }
+}
+@keyframes sm-popup-enter {
+  from { opacity: 0; translate: 0 8px; scale: .985; }
+  to { opacity: 1; translate: none; scale: none; }
+}
+@keyframes sm-backdrop-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Native disclosure keeps focus, form drafts and keyboard semantics. Only a
+   user toggle transitions; rebuilding an already-open panel during polling
+   does not replay entry motion. Older engines retain instant native details. */
+@supports (interpolate-size: allow-keywords) and selector(details::details-content) {
+  @media (prefers-reduced-motion: no-preference) {
+    html[data-theme="smartisan"] details.control-details {
+      interpolate-size: allow-keywords;
+    }
+    html[data-theme="smartisan"] details.control-details[open] summary {
+      margin-bottom: 0;
+    }
+    html[data-theme="smartisan"] details.control-details::details-content {
+      block-size: 0;
+      overflow: clip;
+      opacity: 0;
+      transition: block-size 250ms cubic-bezier(.22,.61,.36,1),
+        opacity 150ms ease-out, content-visibility 250ms allow-discrete;
+    }
+    html[data-theme="smartisan"] details.control-details[open]::details-content {
+      block-size: auto;
+      opacity: 1;
+    }
+    html[data-theme="smartisan"] details.control-details:not([open])::details-content {
+      transition-duration: 150ms, 100ms, 150ms;
+    }
+  }
+}
+
+/* Use the browser's customizable picker so keyboard selection stays native. */
+@supports (appearance: base-select) and selector(select::picker(select)) {
+  html[data-theme="smartisan"] select:where(:not([multiple]):is(:not([size]),[size="1"])),
+  html[data-theme="smartisan"] select:where(:not([multiple]):is(:not([size]),[size="1"]))::picker(select) {
+    appearance: base-select;
+  }
+  html[data-theme="smartisan"] select:where(:not([multiple]):is(:not([size]),[size="1"])) {
+    padding-inline-end: 11px;
+    gap: 8px;
+  }
+  html[data-theme="smartisan"] select::picker(select) {
+    margin-block: 4px;
+    padding: 4px;
+    border: 1px solid #bdbebc;
+    border-radius: 8px;
+    background: var(--sm-grain), var(--sm-panel);
+    box-shadow: inset 0 1px #fff, 0 5px 14px #0002;
+    color: #3c4853;
+  }
+  html[data-theme="smartisan"] select::picker-icon { color: #65717a; }
+  html[data-theme="smartisan"] select option {
+    min-block-size: 30px;
+    padding: 6px 9px;
+    border-radius: 4px;
+    white-space: normal;
+  }
+  html[data-theme="smartisan"] select option:checked {
+    background: linear-gradient(#e8eef2, #dce5ec);
+    color: #254c69;
+  }
+  html[data-theme="smartisan"] select option:enabled:is(:hover,:focus-visible) {
+    background: #d7e5ef;
+    color: #254c69;
+  }
+  html[data-theme="smartisan"] select option:disabled { opacity: .55; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html[data-theme="smartisan"] select::picker(select) {
+      opacity: 0;
+      translate: 0 6px;
+      transition: opacity 100ms ease-in, translate 100ms ease-in,
+        display 100ms allow-discrete, overlay 100ms allow-discrete;
+    }
+    html[data-theme="smartisan"] select:open::picker(select) {
+      opacity: 1;
+      translate: none;
+      transition-duration: 150ms;
+      transition-timing-function: cubic-bezier(.22,.61,.36,1);
+    }
+    @starting-style {
+      html[data-theme="smartisan"] select:open::picker(select) {
+        opacity: 0;
+        translate: 0 6px;
+      }
+    }
+    html[data-theme="smartisan"] select::picker-icon {
+      transition: rotate 150ms cubic-bezier(.22,.61,.36,1);
+    }
+    html[data-theme="smartisan"] select:open::picker-icon { rotate: 180deg; }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="smartisan"] :is(.button,.icon-button,.appearance-open,.appearance-done,.filter-row button,.share-footer button) {
+    transition: none;
+  }
+}
+/* Sidebar artwork and labels share one center and one real inter-item gap.
+   The font's CJK ink sits slightly above its line-box center; compensate in em
+   units so this remains consistent across font sizes and display scaling. */
+html[data-theme="smartisan"] .sidebar nav a>.sm-nav-fallback{display:none!important}
+html[data-theme="smartisan"] .sidebar nav .smartisan-nav-icon{align-self:center;line-height:0}
+html[data-theme="smartisan"] .sidebar nav a>span[data-i18n]{position:relative;top:.055em;align-self:center;text-align:left}

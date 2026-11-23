@@ -1,0 +1,27 @@
+{
+  "package": "迈从大肥鱼插件-0.11.0-朋友测试版-20261120-155455Z",
+  "projectVersion": "0.11.0",
+  "builtAtUtc": "2026-11-20T15:54:55.365143+00:00",
+  "releaseType": "harness-friend-test",
+  "recommendedHost": "DeepSeek Harness",
+  "supportedModes": [
+    "harness",
+    "standalone-api"
+  ],
+  "focusDevices": [
+    "Ace 75",
+    "K20 GT"
+  ],
+  "projectThemeAssetsIncluded": "original-porcelain-and-generated-placeholders",
+  "projectWebfontsIncluded": "porcelain-ui",
+  "smartisanAssetsIncluded": false,
+  "smartisanThemeOptionIncluded": false,
+  "runtimeStateIncluded": false,
+  "credentialsIncluded": false,
+  "personalVoiceIncluded": false,
+  "live2dAppIncluded": true,
+  "live2dCoreIncluded": false,
+  "roleModelIncluded": false,
+  "thirdPartyPluginsRequired": [],
+  "defaultAccess": "loopback-only"
+}

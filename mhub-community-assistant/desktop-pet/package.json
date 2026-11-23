@@ -1,0 +1,1 @@
+{"name":"mchose-dafeiyu-desktop-pet","version":"0.1.0","private":true,"main":"main.cjs","description":"迈从大肥鱼内置桌宠运行器","scripts":{"start":"electron ."},"dependencies":{"@pixi/unsafe-eval":"^6.5.10","electron":"45.3.2","pixi-live2d-display":"0.4.0","pixi.js":"6.5.10"},"overrides":{"gh-pages":"^6.3.0"}}

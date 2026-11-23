@@ -1,0 +1,4 @@
+/* System font fallback for the compatibility theme. */
+:root { --smartisan-font-family: system-ui, sans-serif; }
+.smartisan-font-scope { font-family: var(--smartisan-font-family); }
+.smartisan-font-scope :where(button, input, select, textarea, optgroup) { font-family: inherit; }

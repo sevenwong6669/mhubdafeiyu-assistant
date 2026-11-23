@@ -1,0 +1,2802 @@
+{
+ "note": "她的身体参数词典。tracks 里写 p.<参数>=固定值覆盖、a.<参数>=在原值上叠加、d.<参数>=物理输入(角度/前后/位移)。数值必须落在 min~max 内。",
+ "count": 466,
+ "params": {
+  "Movement1": {
+   "label": "1. 狗尾草",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Movement2": {
+   "label": "2. 抚胸",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Movement3": {
+   "label": "3. 竖食指",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Clothes1": {
+   "label": "1. 长短裙切换",
+   "min": 0,
+   "max": 1,
+   "default": 1
+  },
+  "Clothes2": {
+   "label": "2. 大小变",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Clothes3": {
+   "label": "3. 胸口衣服",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Clothes4": {
+   "label": "4. 鞋子",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Clothes5": {
+   "label": "5. 尾巴",
+   "min": 0,
+   "max": 1,
+   "default": 1
+  },
+  "ParamAngleX": {
+   "label": "AngleX",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "ParamAngleY": {
+   "label": "AngleY",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "ParamAngleZ": {
+   "label": "AngleZ",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "AngleXbs": {
+   "label": "角度 Xbs",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "AngleYbs": {
+   "label": "角度 Ybs",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "AngleXbs3": {
+   "label": "角度 Xbs +15",
+   "min": -30,
+   "max": 30,
+   "default": 30
+  },
+  "AngleXbs2": {
+   "label": "角度 Xbs -15",
+   "min": -30,
+   "max": 30,
+   "default": -30
+  },
+  "AngleYbs2": {
+   "label": "角度 Ybs",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "ParamBodyAngleX": {
+   "label": "胸腔　X",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "ParamBodyAngleY": {
+   "label": "胸腔　Y",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "Param50": {
+   "label": "Lean Y",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Param53": {
+   "label": "Lean Y 2",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Param54": {
+   "label": "Lean Y 3",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "ParamBodyAngleZ": {
+   "label": "胸腔　Z",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "HipAngleZ": {
+   "label": "盆骨Z",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "LEGAngleZ2": {
+   "label": "双腿 Z",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "HipAngleX": {
+   "label": "盆骨X",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "HipAngleY": {
+   "label": "盆骨Y",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "ShoulderY": {
+   "label": "肩膀Y",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "ShoulderZ": {
+   "label": "肩膀Z",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "ShoulderX": {
+   "label": "肩膀X",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "ShoulderYy": {
+   "label": "肩头Y",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "HipZ1": {
+   "label": "盆骨 Z1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "HipZ2": {
+   "label": "盆骨 Z2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamBodyAngleX2": {
+   "label": "□胸腔　X",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "ParamBodyAngleY2": {
+   "label": "□胸腔　Y",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "HipAngleX2": {
+   "label": "□盆骨  X",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "ParamHipAngleZ": {
+   "label": "□ 盆骨  Z",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "ParamHipAngleZ2": {
+   "label": "□ 盆骨  Z 2",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "HipAngleYUP": {
+   "label": "□盆骨Yup",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "HipAngleYDOWN": {
+   "label": "□盆骨Ydown",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "HipAngleXq": {
+   "label": "盆骨Xq",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "Param33": {
+   "label": "并腿",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamBodyAngleRX": {
+   "label": "身体位移RX",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "ParamBodyAngleRY": {
+   "label": "身体位移RY",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "ParamBodyAngleRZ": {
+   "label": "身体位移RZ",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "AngleX": {
+   "label": "OX",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "AngleY": {
+   "label": "OY",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "AngleZ": {
+   "label": "OZ",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "PositionX": {
+   "label": "OPX",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "PositionY": {
+   "label": "OPY",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "PositionZ": {
+   "label": "OPYZ",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "LeanInput": {
+   "label": "Lean Input",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "Emotion": {
+   "label": "Emotion",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Emotion2": {
+   "label": "Emotion 过渡",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "IDLE": {
+   "label": "IDLE",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "EyeSmile": {
+   "label": "微笑",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamEyeBallX": {
+   "label": "眼珠 X",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamEyeBallY": {
+   "label": "眼珠 Y",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "PupilX": {
+   "label": "瞳孔透视X",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "PupilY": {
+   "label": "瞳孔透视Y",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "BrowInnerUp": {
+   "label": "BrowInnerUp",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "RParamGlowA": {
+   "label": "<光效A",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "RParamGlowB": {
+   "label": "<光效B",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RParamGlowC": {
+   "label": "<光效C",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamEyeROpen": {
+   "label": "右眼  开闭",
+   "min": 0,
+   "max": 1.5,
+   "default": 1
+  },
+  "ParamBrowRY": {
+   "label": "右眉上下",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamBrowRAngleSmoothing": {
+   "label": "右眉 角度 过渡",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamBrowRAngle": {
+   "label": "右眉　角度",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamBrowRY2": {
+   "label": "右眉上下缓动",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamBrowRY3": {
+   "label": "右眉联动 x",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ShockR": {
+   "label": "Shock R",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "REyeSquint": {
+   "label": "R-Eye Squint",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "LParamGlowA": {
+   "label": ">光效A",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "LParamGlowB": {
+   "label": ">光效B",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LParamGlowC": {
+   "label": ">光效C",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamEyeLOpen": {
+   "label": "左眼　开闭",
+   "min": 0,
+   "max": 1.5,
+   "default": 1
+  },
+  "ParamBrowLY": {
+   "label": "左眉上下",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamBrowLAngleSmoothing": {
+   "label": "左眉 角度 过渡",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamBrowLAngle": {
+   "label": "左眉　角度",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamBrowLY2": {
+   "label": "左眉上下缓动",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamBrowLY3": {
+   "label": "左眉联动 x",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ShockL": {
+   "label": "Shock L",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LEyeSquint": {
+   "label": "L-Eye Squint",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "ParamMouthForm": {
+   "label": "嘴　变形",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamMouthOpenY": {
+   "label": "嘴　张开和闭合",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "JawOpen": {
+   "label": "下巴开闭",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "TongueOut": {
+   "label": "伸舌头",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "MouthX": {
+   "label": "MouthX",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "MouthSmile_L": {
+   "label": "MouthSmile_L",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "MouthSmile_R": {
+   "label": "MouthSmile_R",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Press": {
+   "label": "用力",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Mouthpucker": {
+   "label": "撅嘴",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "MouthFunnel": {
+   "label": "漏斗嘴",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "MouthPuckerWiden": {
+   "label": "嘴宽窄",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "CheeckPuff": {
+   "label": "鼓脸",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "CheeckPuff2": {
+   "label": "鼓脸-变化",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "CheeckPuffR": {
+   "label": "< 鼓脸",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "CheeckPuffL": {
+   "label": "> 鼓脸",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "MouthPressLipOpen": {
+   "label": "MouthPressLipOpen",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "MouthRollUpper": {
+   "label": "MouthRollUpper",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "MouthRollLower": {
+   "label": "MouthRollLower",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "NoseNeer": {
+   "label": "NosePositionY",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "PoutOffsetXL": {
+   "label": "努嘴位移 X>>",
+   "min": 0,
+   "max": 30,
+   "default": 0
+  },
+  "PoutOffsetXR": {
+   "label": "努嘴位移 X<<",
+   "min": 0,
+   "max": 30,
+   "default": 0
+  },
+  "ParamSilence": {
+   "label": "ParamSilence",
+   "min": 0,
+   "max": 1,
+   "default": 1
+  },
+  "ParamA": {
+   "label": "A",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "ParamI": {
+   "label": "I",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "ParamU": {
+   "label": "U",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "ParamE": {
+   "label": "E",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "ParamO": {
+   "label": "O",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "RShiftbuffer": {
+   "label": "<变化缓冲",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "RColorshift": {
+   "label": "<眼睛颜色",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "REyeball1": {
+   "label": "<眼珠 1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "REyeball2": {
+   "label": "<眼珠 2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "REyeball3": {
+   "label": "<眼珠 3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "REyeLashX1": {
+   "label": "右眼睫毛X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "REyeLashX2": {
+   "label": "右眼睫毛X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "REyes1": {
+   "label": "眼眶1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "REyes2": {
+   "label": "眼眶2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RHighLight1": {
+   "label": "右眼高光1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RHighLight2": {
+   "label": "右眼高光2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RHighLight3": {
+   "label": "右眼高光3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LEyeball1": {
+   "label": ">眼珠 1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LEyeball2": {
+   "label": ">眼珠 2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LEyeball3": {
+   "label": ">眼珠 3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LEyes1": {
+   "label": "眼眶1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LEyes2": {
+   "label": "眼眶2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LEyeLashX1": {
+   "label": "左眼睫毛X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LEyeLashX2": {
+   "label": "左眼睫毛X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LHighLight1": {
+   "label": "左眼高光1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LHighLight2": {
+   "label": "左眼高光2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LHighLight3": {
+   "label": "左眼高光3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "CheeksWiggleX": {
+   "label": "脸盘抖动X",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "CheeksWiggleXR": {
+   "label": "脸盘抖动X<",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "CheeksWiggleXL": {
+   "label": "脸盘抖动X>",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "CheeksWiggleY": {
+   "label": "脸盘抖动Y",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LipPhysics1": {
+   "label": "嘴唇物理1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LipPhysics2": {
+   "label": "嘴唇物理2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LipPhysics3": {
+   "label": "嘴唇物理3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamTongueUpDown": {
+   "label": "舌头上下",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamTongueWidth": {
+   "label": "舌头宽窄",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "FrontHairZ": {
+   "label": "前发Z",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "FrontHairX1": {
+   "label": "前发X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "FrontHairX2": {
+   "label": "前发X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "FrontHairX3": {
+   "label": "前发X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "FrontHairX4": {
+   "label": "前发X4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "FrontHairY1": {
+   "label": "前发Y1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "FrontHairY2": {
+   "label": "前发Y2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "FrontHairY3": {
+   "label": "前发Y3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "FrontHairY4": {
+   "label": "前发Y4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SideHairX1": {
+   "label": "侧发X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SideHairX2": {
+   "label": "侧发X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SideHairX3": {
+   "label": "侧发X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SideHairX4": {
+   "label": "侧发X4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SideHairY1": {
+   "label": "侧发Y1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SideHairY2": {
+   "label": "侧发Y2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SideHairY3": {
+   "label": "侧发Y3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SideHairY4": {
+   "label": "侧发Y4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SideHairLX1": {
+   "label": "侧发LX1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SideHairRX1": {
+   "label": "侧发RX1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SideHairRX2": {
+   "label": "侧发RX2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SideHairRX3": {
+   "label": "侧发RX3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SideHairRBS": {
+   "label": "侧发RBS",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SideHairLX2": {
+   "label": "侧发LX2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SideHairLX3": {
+   "label": "侧发LX3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SideHairLBS": {
+   "label": "侧发LBS",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateSideHairX1": {
+   "label": "后侧发X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateSideHairX2": {
+   "label": "后侧发X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateSideHairX3": {
+   "label": "后侧发X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateSideHairX4": {
+   "label": "后侧发X4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateSideHairX5": {
+   "label": "后侧发X5",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateSideHairXBS": {
+   "label": "后侧发XBS",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateSideHairY1": {
+   "label": "后侧发Y1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateSideHairY2": {
+   "label": "后侧发Y2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateSideHairY3": {
+   "label": "后侧发Y3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateSideHairY4": {
+   "label": "后侧发Y4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateSideHairY5": {
+   "label": "后侧发Y5",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateSideHairYbs": {
+   "label": "后侧发Ybs",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateHairZ": {
+   "label": "后发 Z",
+   "min": -30,
+   "max": 30,
+   "default": 0
+  },
+  "LateHairX1": {
+   "label": "后发X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateHairX2": {
+   "label": "后发X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateHairX3": {
+   "label": "后发X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateHairX4": {
+   "label": "后发X4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateHairX5": {
+   "label": "后发X5",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateHairY1": {
+   "label": "后发Y1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateHairY2": {
+   "label": "后发Y2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateHairY3": {
+   "label": "后发Y3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateHairY4": {
+   "label": "后发Y4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LateHairY5": {
+   "label": "后发Y5",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ShortPonytailX1": {
+   "label": "短马尾X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ShortPonytailX2": {
+   "label": "短马尾X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ShortPonytailXBS": {
+   "label": "短马尾XBS",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ShortPonytailXBS2": {
+   "label": "短马尾XBS2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ShortPonytailY": {
+   "label": "短马尾Y",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ShortPonytailY2": {
+   "label": "短马尾Y2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ShortPonytailYBS": {
+   "label": "短马尾YBS",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ShortPonytailYBS2": {
+   "label": "短马尾YBS2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param35": {
+   "label": "手臂开关物理",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param44": {
+   "label": "左臂Z",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LArm": {
+   "label": "左大臂",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LForearm": {
+   "label": "左小臂",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LWrist": {
+   "label": "左手腕",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LHand": {
+   "label": "左手指",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LHand2": {
+   "label": "左手指",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LSleeveX1": {
+   "label": "左袖子X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LSleeveX2": {
+   "label": "左袖子X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LSleeveX3": {
+   "label": "左袖子X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LSleeveY": {
+   "label": "左袖子Y1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LSleeveY2": {
+   "label": "左袖子Y2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LSleeveY3": {
+   "label": "左袖子Y3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LRibbonX1": {
+   "label": "左飘带X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LRibbonX2": {
+   "label": "左飘带X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LRibbonX3": {
+   "label": "左飘带X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LRibbonX4": {
+   "label": "左飘带X4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LRibbonY1": {
+   "label": "左飘带Y1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LRibbonY2": {
+   "label": "左飘带Y2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LRibbonY3": {
+   "label": "左飘带Y3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LRibbonY4": {
+   "label": "左飘带Y4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param25": {
+   "label": "右手Z",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RArm": {
+   "label": "右大臂",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RForearm": {
+   "label": "右小臂",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RWrist": {
+   "label": "右手腕",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RHand": {
+   "label": "右手指",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RHand2": {
+   "label": "右手指",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RSleeveX1": {
+   "label": "右袖子X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RSleeveX2": {
+   "label": "右袖子X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RSleeveX3": {
+   "label": "右袖子X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RSleeveX4": {
+   "label": "右袖子X4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RSleeveY1": {
+   "label": "右袖子Y1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RSleeveY2": {
+   "label": "右袖子Y2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RSleeveY3": {
+   "label": "右袖子Y3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RRibbonX1": {
+   "label": "右飘带X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RRibbonX2": {
+   "label": "右飘带X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RRibbonX3": {
+   "label": "右飘带X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RRibbonX4": {
+   "label": "右飘带X4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RRibbonY1": {
+   "label": "右飘带Y1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RRibbonY2": {
+   "label": "右飘带Y2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RRibbonY3": {
+   "label": "右飘带Y3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RRibbonY4": {
+   "label": "右飘带Y4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ChestX1": {
+   "label": "胸X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ChestX2": {
+   "label": "胸X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ChestX3": {
+   "label": "胸X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ChestXBS": {
+   "label": "胸XBS",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ChestY1": {
+   "label": "胸Y1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ChestY2": {
+   "label": "胸Y2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ChestY3": {
+   "label": "胸Y3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ChestY4": {
+   "label": "胸↓",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Shine": {
+   "label": "闪光",
+   "min": -1,
+   "max": 1,
+   "default": -1
+  },
+  "ShineX": {
+   "label": "闪光旋转",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ShineBIG": {
+   "label": "闪光大小",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Hat_XA": {
+   "label": "帽子 XA",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Hat_XB": {
+   "label": "帽子 XB",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Hat_XC": {
+   "label": "帽子 XC",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Hat_YA": {
+   "label": "帽子 YA",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Hat_YB": {
+   "label": "帽子 YB",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Hat_YC": {
+   "label": "帽子 YC",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RBowX8": {
+   "label": "<-配饰X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RBowX5": {
+   "label": "<-配饰X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RBowX6": {
+   "label": "<-配饰X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RBowX7": {
+   "label": "<-配饰X4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RBowX1": {
+   "label": "<-配饰X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RBowX2": {
+   "label": "<-配饰X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RBowX3": {
+   "label": "<-配饰X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RBowX4": {
+   "label": "<-配饰X4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LBowX1": {
+   "label": ">-配饰X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LowX2": {
+   "label": ">-配饰X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LBowX3": {
+   "label": ">-配饰X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LBowX4": {
+   "label": ">-配饰X4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RJewelry1": {
+   "label": "< 耳环 A",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RJewelry2": {
+   "label": "< 耳环 B",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RJewelry3": {
+   "label": "< 耳环 C",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LJewelry1": {
+   "label": "> 耳环 A",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LJewelry2": {
+   "label": "> 耳环 B",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LJewelry3": {
+   "label": "> 耳环 C",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ribbonX1": {
+   "label": "缎带X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ribbonX2": {
+   "label": "缎带X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ribbonX3": {
+   "label": "缎带X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ribbonX4": {
+   "label": "缎带X4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ribbonY1": {
+   "label": "缎带Y1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ribbonY2": {
+   "label": "缎带Y2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ribbonY3": {
+   "label": "缎带Y3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ribbonY4": {
+   "label": "缎带Y4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ribbonX5": {
+   "label": "缎带X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ribbonX7": {
+   "label": "缎带X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ribbonX6": {
+   "label": "缎带X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ribbonY5": {
+   "label": "缎带Y1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ribbonY6": {
+   "label": "缎带Y2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ribbonY7": {
+   "label": "缎带Y3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Hat2pha": {
+   "label": "帽子尖 PHA",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Hat2phB": {
+   "label": "帽子尖 PHB",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Hat2phC": {
+   "label": "帽子尖 PHC",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Hat2phD": {
+   "label": "帽子尖 PHD",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtX1": {
+   "label": "裙X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtX2": {
+   "label": "裙X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtX3": {
+   "label": "裙X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtX4": {
+   "label": "裙X4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtSpecial": {
+   "label": "裙X特殊",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtSpecial2": {
+   "label": "裙X特殊2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtY": {
+   "label": "裙Y",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtY2": {
+   "label": "裙Y2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtY3": {
+   "label": "裙Y3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtY4": {
+   "label": "裙Y4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtY5": {
+   "label": "裙Y5",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtYBS": {
+   "label": "裙YBS",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtY6": {
+   "label": "裙Y",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtY7": {
+   "label": "裙Y2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtY9": {
+   "label": "裙Y3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtY8": {
+   "label": "裙Y4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtLayerX1": {
+   "label": "裙子层级X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtLayerX2": {
+   "label": "裙子层级X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtLayerX3": {
+   "label": "裙子层级X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtLayerX4": {
+   "label": "裙子层级X4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtLayerX5": {
+   "label": "裙子层级X5",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtLayerX6": {
+   "label": "裙子层级X6",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtLayerY1": {
+   "label": "裙子层级Y1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtLayerY2": {
+   "label": "裙子层级Y2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtLayerY3": {
+   "label": "裙子层级Y3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtLayerY4": {
+   "label": "裙子层级Y4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtLayerY5": {
+   "label": "裙子层级Y5",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SkirtLayerY6": {
+   "label": "裙子层级Y6",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LaceRX": {
+   "label": "< 花边X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LaceRX2": {
+   "label": "< 花边X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LaceRX3": {
+   "label": "< 花边X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LaceLX1": {
+   "label": "> 花边X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LaceLX2": {
+   "label": "> 花边LX2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LaceLX3": {
+   "label": "> 花边LX3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LaceX1": {
+   "label": "缎带X1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LaceX2": {
+   "label": "缎带X2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LaceX3": {
+   "label": "缎带X3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LaceY1": {
+   "label": "缎带Y1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LaceY2": {
+   "label": "缎带Y2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LaceY3": {
+   "label": "缎带Y3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LControl": {
+   "label": "< Control",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RFlip": {
+   "label": "< Flip x",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RFlip2": {
+   "label": "< Flip y",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LEar1": {
+   "label": "<兽耳PHA",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LEar2": {
+   "label": "<兽耳PHB",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LEar3": {
+   "label": "<兽耳PHC",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "RControl": {
+   "label": "> Control",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LFlip": {
+   "label": "> Flip x",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LFlip2": {
+   "label": "> Flip y",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "REar1": {
+   "label": ">兽耳PHA",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "REar2": {
+   "label": ">兽耳PHB",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "REar3": {
+   "label": ">兽耳PHC",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param11": {
+   "label": "呆滞",
+   "min": 0,
+   "max": 8,
+   "default": 0
+  },
+  "MicroGlows": {
+   "label": "话筒光",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "SweatBurst1": {
+   "label": "冒汗1",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "SweatBurst2": {
+   "label": "冒汗1 开关",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "SweatBurst3": {
+   "label": "冒汗2",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "SweatBurst4": {
+   "label": "冒汗2 开关",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "SweatBurst5": {
+   "label": "冒汗3",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "SweatBurst6": {
+   "label": "冒汗3 开关",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Sweat1": {
+   "label": "流汗1",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Sweat2": {
+   "label": "流汗2",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "WingOpenClose": {
+   "label": "翅膀开合",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "WingSpread": {
+   "label": "翅膀舒展",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "FeatherPhysics1": {
+   "label": "羽毛物理1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "FeatherPhysics2": {
+   "label": "羽毛物理2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "WingRotation": {
+   "label": "翅膀旋转",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "WingOpenClose2": {
+   "label": "翅膀开合",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "WingSpread2": {
+   "label": "翅膀舒展",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "FeatherPhysics3": {
+   "label": "羽毛物理1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "FeatherPhysics4": {
+   "label": "羽毛物理2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "WingRotation2": {
+   "label": "翅膀旋转",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param140": {
+   "label": "加载",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Param137": {
+   "label": "炸毛",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Param139": {
+   "label": "炸毛移动",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Param138": {
+   "label": "身体抖动",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "SHOCKEYE": {
+   "label": "SHOCK EYE",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param135": {
+   "label": "爱心UD",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param6": {
+   "label": "爱心弹1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param7": {
+   "label": "爱心弹2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param132": {
+   "label": "泪花 A",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param133": {
+   "label": "泪花 B",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Angry": {
+   "label": "生气",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Param136": {
+   "label": "钱",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Angry2": {
+   "label": "生气",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Angry3": {
+   "label": "生气",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "AniEyerolling": {
+   "label": "蚊香眼",
+   "min": 0,
+   "max": 30,
+   "default": 0
+  },
+  "Ani1": {
+   "label": "动画1",
+   "min": -1,
+   "max": 1,
+   "default": -1
+  },
+  "SWITCHA": {
+   "label": "开关A",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Ani2": {
+   "label": "动画2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param141": {
+   "label": "闪光 1",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Param142": {
+   "label": "闪光 2",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "F1Anikey": {
+   "label": "花1动画开关",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "F2Anikey": {
+   "label": "花2动画开关",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "F3Anikey": {
+   "label": "花3动画开关",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Colorflicker5": {
+   "label": "1眼光显隐",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Glintshift5": {
+   "label": "1眼光移动",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Colorflicker6": {
+   "label": "2眼光显隐",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Glintshift6": {
+   "label": "2眼光移动",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Colorflicker7": {
+   "label": "3眼光显隐",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Glintshift8": {
+   "label": "3眼光移动",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Colorflicker8": {
+   "label": "4眼光显隐",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Glintshift7": {
+   "label": "4眼光移动",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "LittleFlower1": {
+   "label": "小花飘落1",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "LittleFlower2": {
+   "label": "小花显隐1",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "LittleFlower9": {
+   "label": "小花左右",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LittleFlower3": {
+   "label": "小花飘落2",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "LittleFlower4": {
+   "label": "小花显隐2",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "LittleFlower10": {
+   "label": "小花左右",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LittleFlower5": {
+   "label": "小花飘落3",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "LittleFlower6": {
+   "label": "小花显隐3",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "LittleFlower11": {
+   "label": "花形变",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "LittleFlower13": {
+   "label": "花旋转",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "LittleFlower12": {
+   "label": "花左右",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param12": {
+   "label": "生气1",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Param13": {
+   "label": "生气2",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "AngryMove": {
+   "label": "生气移动",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "AngryMove3": {
+   "label": "生气显隐",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "AngryMove2": {
+   "label": "生气伸缩",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "AngryMove4": {
+   "label": "生气伸缩2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "AngryMove5": {
+   "label": "生气移动",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "AngryMove8": {
+   "label": "生气显隐",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "AngryMove6": {
+   "label": "生气伸缩",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "AngryMove7": {
+   "label": "生气伸缩2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param31": {
+   "label": "泪花闪烁",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param32": {
+   "label": "高光闪烁",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param27": {
+   "label": "< 流泪-膨胀",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param28": {
+   "label": "< 流泪-滴下1",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "RCry": {
+   "label": "<落泪",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "RCryKey": {
+   "label": "<落泪开关",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "RCry2": {
+   "label": "<落泪 涌出",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Param29": {
+   "label": "> 流泪-膨胀",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param30": {
+   "label": "> 流泪-滴下1",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "LCry": {
+   "label": ">落泪",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "LCryKey": {
+   "label": ">落泪开关",
+   "min": 0,
+   "max": 1,
+   "default": 1
+  },
+  "LCry3": {
+   "label": ">落泪 涌出",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Startwinkle": {
+   "label": "星星闪烁",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Startwinkle2": {
+   "label": "星星闪烁2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param55": {
+   "label": "光1",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Param56": {
+   "label": "光2",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Param58": {
+   "label": "光3",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Param57": {
+   "label": "光4",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Param52": {
+   "label": "尾巴翻面",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param_Angle_Rotation84": {
+   "label": "[0]尾巴",
+   "min": -45,
+   "max": 45,
+   "default": 0
+  },
+  "Param_Angle_Rotation85": {
+   "label": "[1]尾巴",
+   "min": -45,
+   "max": 45,
+   "default": 0
+  },
+  "Param_Angle_Rotation86": {
+   "label": "[2]尾巴",
+   "min": -45,
+   "max": 45,
+   "default": 0
+  },
+  "Param_Angle_Rotation87": {
+   "label": "[3]尾巴",
+   "min": -45,
+   "max": 45,
+   "default": 0
+  },
+  "Param_Angle_Rotation88": {
+   "label": "[4]尾巴",
+   "min": -45,
+   "max": 45,
+   "default": 0
+  },
+  "Param_Angle_Rotation89": {
+   "label": "[5]尾巴",
+   "min": -45,
+   "max": 45,
+   "default": 0
+  },
+  "Param51": {
+   "label": "草放大",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param45": {
+   "label": "草物理1",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param46": {
+   "label": "草物理2",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param47": {
+   "label": "草物理3",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param48": {
+   "label": "草物理4",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param49": {
+   "label": "草物理5",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param37": {
+   "label": "动画开关",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Param38": {
+   "label": "动画 双手开关",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Param40": {
+   "label": "竖手指 大臂无缝用",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  },
+  "Param36": {
+   "label": "R大臂z",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param39": {
+   "label": "大臂透视",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param41": {
+   "label": "R小臂 Z",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param42": {
+   "label": "R手腕 Z",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param43": {
+   "label": "R 食指",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param62": {
+   "label": "L 大臂z",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param59": {
+   "label": "大臂透视",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param60": {
+   "label": "L小臂 Z",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "Param61": {
+   "label": "L手腕 Z",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "GemReflection": {
+   "label": "宝石反光",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "GemHighlightx": {
+   "label": "宝石高光 x",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "GemHighlighty": {
+   "label": "宝石高光 y",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "KiraA": {
+   "label": "闪光 A",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "KiraB": {
+   "label": "闪光 B",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "KiraC": {
+   "label": "闪光 C",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "KiraD": {
+   "label": "闪光 D",
+   "min": -1,
+   "max": 1,
+   "default": 0
+  },
+  "ParamBreath": {
+   "label": "呼吸",
+   "min": 0,
+   "max": 1,
+   "default": 0
+  }
+ }
+}

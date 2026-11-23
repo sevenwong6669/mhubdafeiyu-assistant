@@ -1,0 +1,2234 @@
+<!doctype html>
+<!-- Live2D 大肥鱼桌宠 M1 渲染页：透明画布 + 气泡 + 语音口型 + 拖拽 + 鼠标穿透 -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
+    font-family: "Microsoft YaHei", sans-serif; user-select: none; }
+  #stage { position: absolute; inset: 0; cursor: grab; }
+  #stage.dragging { cursor: grabbing; }
+  #bubble {
+    /* 窗口加宽后气泡不能再跟着满宽（720 宽时变成 692px 的横幅），限制到 340px 居中。
+       用 left+right+margin auto 而不是 transform，因为入场动画占用了 transform。 */
+    position: absolute; left: 14px; right: 14px; margin: 0 auto; max-width: 340px; top: 8px; box-sizing: border-box;
+    background: rgba(255, 255, 255, .97); border: 1px solid #bcd9ea; border-radius: 12px;
+    padding: 9px 12px; font-size: 12.5px; line-height: 1.55; color: #234;
+    box-shadow: 0 6px 18px rgba(30, 80, 120, .22); display: none; cursor: default;
+    word-break: break-word; transform-origin: 50% 100%;
+  }
+  #bubble.show { display: block; animation: bubbleIn .14s ease-out; }
+  @keyframes bubbleIn { from { opacity: 0; transform: translateY(5px) scale(.97); } to { opacity: 1; transform: none; } }
+  #bubble::after {
+    content: ''; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px;
+    background: rgba(255, 255, 255, .97); border-right: 1px solid #bcd9ea; border-bottom: 1px solid #bcd9ea;
+    transform: translateX(-50%) rotate(45deg);
+  }
+  #bubble .tag { display: inline-block; font-size: 10px; color: #2a86c6; margin-bottom: 3px; }
+  #bubbleText { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 7; overflow: hidden; }
+  /* 思考气泡：头顶旁三个点。比对话气泡轻、无文字，长时间挂着也不占视线 */
+  #think {
+    position: absolute; left: 50%; top: 104px; margin-left: 26px;
+    display: none; gap: 4px; padding: 7px 9px; box-sizing: border-box;
+    background: rgba(255, 255, 255, .95); border: 1px solid #bcd9ea; border-radius: 30px;
+    box-shadow: 0 4px 12px rgba(30, 80, 120, .18); pointer-events: none;
+  }
+  #think.show { display: flex; animation: bubbleIn .22s ease-out; }
+  #think i { width: 5px; height: 5px; border-radius: 50%; background: #63a9d6; display: block;
+    animation: thinkDot 1.35s infinite ease-in-out; }
+  #think i:nth-child(2) { animation-delay: .18s; }
+  #think i:nth-child(3) { animation-delay: .36s; }
+  @keyframes thinkDot {
+    0%, 62%, 100% { opacity: .25; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-3px); }
+  }
+  #status {
+    position: absolute; right: 6px; top: 6px; color: rgba(127, 231, 164, .9);
+    font: 10px/1.5 monospace; white-space: pre; text-shadow: 0 1px 2px #000; display: none;
+  }
+  /* 角色图层在窗口最底部柔和淡出。窗口是矩形，DOM 画不出窗口外，
+     所以「她的腿被窗口底边切断」这件事没法靠布局消除，只能靠 alpha：
+     最后 44px 从实心渐变到全透明，视觉上是「下半身淡入桌面」。
+     注意只渐隐角色、**不渐隐前景** —— 前景是遮挡层，越实心越挡得住；
+     它一淡就等于把遮罩变薄，身后的腿会从半透明里透出来。
+     窗口底边那条硬线留给前景的底面去承受：静物在画面边缘被裁掉是正常的，
+     人的身体被切断才是穿帮。
+
+     **只在 bust 打开（.fadeBottom）**：这个渐变的前提是「她的腿被窗口切断」，
+     用来把断口伪装成淡出。full 模式下脚并没有被切断 —— 人本来就站在画面最底边，
+     鞋底贴窗口下沿才是正常构图；这时候还淡，脚尖会凭空消失成半透明的影，
+     像没渲染完。两种模式的语义不同，所以不能写死在 #stage 上，由 syncStageMask() 切。 */
+  #stage.fadeBottom {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 44px), transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 44px), transparent 100%);
+  }
+  /* 前景遮挡：bust 模式下贴在窗口底缘的道具，把「画面切在腰上」变成
+     「她站在窗台/桌沿后面」。它必须是独立图层而不是模型部件 —— 模型是公皮，
+     改模型会踩许可，而且真实感只要「挡住切边」这一件事，不需要参与变形。
+     pointer-events:none 让它完全放行点击，命中检测仍走 canvas 的 alpha 采样。 */
+  #fore { position: absolute; left: 0; right: 0; bottom: 0; pointer-events: none; display: none; }
+  #fore.show { display: block; animation: foreIn .18s ease-out; }
+  #fore img { display: block; width: 100%; height: auto; }
+  @keyframes foreIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* 换衣面板：竖排贴右侧。
+     为什么放右边而不是中间：换衣模式会自动切全身视图，人物缩到窗口正中约 272px 宽
+     （sc≈0.086 × 内容宽 3161），左右各剩 220px 空白 —— 面板正好落在这块空白里，
+     不压人物。换成半身取景时它会盖住一部分头发，但那时本来也看不见衣服，
+     所以面板只在换衣模式下存在，不存在「两个都想看」的冲突。 */
+  #dress {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    width: 212px; box-sizing: border-box; padding: 10px 10px 8px;
+    background: rgba(255, 255, 255, .97); border: 1px solid #bcd9ea; border-radius: 12px;
+    box-shadow: 0 8px 22px rgba(30, 80, 120, .24); display: none; cursor: default;
+    font-size: 12px; color: #234;
+  }
+  #dress.show { display: block; animation: bubbleIn .16s ease-out; }
+  #dress .hd { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  #dress .hd b { font-size: 12.5px; color: #2a86c6; font-weight: normal; }
+  #dress .hd span { font-size: 10px; color: #9ab; }
+  #dress .r { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+  #dress .r > em { width: 32px; flex: none; font-style: normal; color: #567; font-size: 11.5px; }
+  #dress .r button {
+    flex: 1; min-width: 0; padding: 5px 0; border: 1px solid #cfdfe9; border-radius: 7px;
+    background: #f7fbfe; color: #345; font: inherit; font-size: 11.5px; cursor: pointer;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  #dress .r button:hover { background: #eaf5fd; }
+  #dress .r button.on { background: #2a86c6; border-color: #2a86c6; color: #fff; }
+  /* 无级滑块行：名称 32 + 轨道 flex + 生效值 34。
+     --pct 由 JS 写，驱动轨道左侧的蓝色进度（原生 range 没有「已选段」着色）。 */
+  #dress .r.sl { gap: 6px; margin-bottom: 3px; }
+  #dress .r.sl > em { width: 28px; }
+  #dress .r.sl .v {
+    width: 44px; flex: none; text-align: right; color: #678; font-size: 10.5px;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  #dress .r.sl input[type=range] {
+    -webkit-appearance: none; appearance: none; flex: 1; min-width: 0;
+    height: 16px; margin: 0; background: transparent; cursor: pointer;
+  }
+  #dress .r.sl input[type=range]::-webkit-slider-runnable-track {
+    height: 4px; border-radius: 2px;
+    background: linear-gradient(to right, #2a86c6 0, #2a86c6 var(--pct, 50%), #dbe8f1 var(--pct, 50%), #dbe8f1 100%);
+  }
+  #dress .r.sl input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 12px; height: 12px; margin-top: -4px;
+    border-radius: 50%; background: #fff; border: 2px solid #2a86c6;
+    box-shadow: 0 1px 3px rgba(30, 80, 120, .3);
+  }
+  #dress .sep { height: 1px; background: #e8f0f6; margin: 6px 0 6px; }
+  #dress .done {
+    width: 100%; margin-top: 5px; padding: 6px 0; border: 0; border-radius: 8px;
+    background: #2a86c6; color: #fff; font: inherit; font-size: 12px; cursor: pointer;
+  }
+  #dress .done:hover { background: #2380bd; }
+</style>
+</head>
+<body>
+  <div id="bubble"><div class="tag" id="bubbleTag">主动来找你</div><div id="bubbleText"></div></div>
+  <div id="think"><i></i><i></i><i></i></div>
+  <div id="status"></div>
+  <div id="stage"></div>
+  <div id="fore"><img id="foreImg" alt=""></div>
+  <div id="dress">
+    <div class="hd"><b>换衣</b><span>右键关闭</span></div>
+    <div id="dressRows"></div>
+    <button class="done" id="dressDone">完成</button>
+  </div>
+<script src="/app/renderer/audio-devices.js"></script>
+<script src="/node_modules/pixi.js/dist/pixi.min.js"></script>
+<script src="/app/renderer/live2dcubismcore.min.js"></script>
+<script src="/node_modules/pixi-live2d-display/dist/cubism4.min.js"></script>
+<script>
+(() => {
+  const stage = document.getElementById('stage')
+  const bubble = document.getElementById('bubble')
+  const bubbleTag = document.getElementById('bubbleTag')
+  const bubbleText = document.getElementById('bubbleText')
+  const statusEl = document.getElementById('status')
+  const thinkEl = document.getElementById('think')
+  const DRESS_EL = document.getElementById('dress')
+  const DRESS_ROWS_EL = document.getElementById('dressRows')
+  const DRESS_DONE = document.getElementById('dressDone')
+  const P = window.petBridge
+  const MODEL_URL = '/runtime-model/selected.model3.json'
+
+  let model = null
+  // 遮罩缓冲区边长。pixi-live2d-display 里 CubismClippingManager_WebGL 写死 256×256，
+  // 而遮罩纹理是 LINEAR 采样 —— 分辨率太低时遮罩边界会糊成一条宽带，
+  // 表现就是「尾巴外面套一圈白光晕」「脖子和腰的遮罩缝是一圈亮边」（2026-11-06 先生报的两个外观问题，
+  // 同一个根因）。提到 1024 后尾巴光晕消失、边界收紧；实测 2048 与 1024 肉眼看不出差别，
+  // 四档的帧间隔都是 8.3ms（120fps 满载不掉），所以取 1024 不浪费显存。
+  const CLIP_MASK_SIZE = 1024
+  let mouthOpen = 0        // 平滑后的口型开度 0..1
+  let mouthTarget = 0      // 音频实时目标
+  let audioCtx = null
+  let analyser = null
+  let playing = false
+  let speechRaw = 0        // 音频实时音量 0..1（口型与说话层共用同一个 RMS，避免两套算法打架）
+  let speechFallbackUntil = 0 // 没有音频的纯文本回复：在这之前也保持说话姿态（无重音、只有基础前倾与摆动）
+  let statusOn = false
+
+  // ---------- pixi 舞台（透明；preserveDrawingBuffer 供鼠标 alpha 命中检测） ----------
+  // resolution 必须跟上 devicePixelRatio：本机窗口跑在 125% 缩放下，默认 resolution=1 时
+  // canvas 只有 380×780 个像素却被系统拉到 475×975 显示，等于整幅画面先低分辨率渲染再软放大，
+  // 所有斜边（尾巴、发丝）都呈阶梯状——这就是「尾巴边缘像抠图没抠好」的一半原因。
+  // autoDensity 让 canvas 的 CSS 尺寸仍等于 380×780，布局不受影响。
+  const app = new PIXI.Application({
+    backgroundAlpha: 0, resizeTo: window, antialias: true, preserveDrawingBuffer: true,
+    resolution: window.devicePixelRatio || 1, autoDensity: true,
+  })
+  stage.appendChild(app.view)
+  app.view.style.width = '100%'; app.view.style.height = '100%'
+
+  // ---------- 视图模式：bust=上半身特写（默认，嘴清晰可见）| full=全身 ----------
+  let viewMode = 'bust'
+  let zoomLevel = 1 // 面板「模型大小」调节（0.4~2.5），layout 时乘上
+  // 底缘渐变只给 bust：bust 是「腿被窗口切断」，靠淡出伪装断口；
+  // full 是「脚踩在画面底边」，那是正常构图，再淡就会让脚尖凭空消失。
+  function syncStageMask() { stage.classList.toggle('fadeBottom', viewMode === 'bust') }
+  syncStageMask()
+
+  // ---------- 常驻外观：面板「外观」卡片 / 她的 live2d_look 工具 ----------
+  // 模型自带一批 0~1 的形象开关参数（换装 / 道具），不是动作也不是表情。
+  // 链路：面板 → modules-data/live2d/pet.json 的 look 字段 → 主进程每 2s 轮询 → IPC → 这里。
+  // 每帧在 beforeModelUpdate 里写（和姿势/动作层同一个时机），因为库的更新序列是
+  // emit(beforeModelUpdate) → coreModel.update() → loadParameters()，
+  // 画完一帧参数就被复位回模型基准值，只有每帧重写才能常驻。
+  // 名字对照（cdi3.json 里的 label）：
+  //   key10 = 大钢盆   key11 = 黑框眼镜   key12 = 单片眼镜
+  //   Clothes1 = 长短裙（1=短裙露腿 / 0=长裙及踝，实测 2026-11-06）   Clothes5 = 尾巴（1=有 0=无，默认 1）
+  //   Clothes4 = 鞋子（0=穿鞋 / 1=脱掉光脚，10 个部件做透明度渐变，能中间态过渡）
+  //   Clothes3 = 胸口衣服：不透明度不变，但顶点在动（0→1 胸口布料整体撑高 0.029 个画幅），
+  //                  是「领口高低 / 胸围」的无级参数，只查透明度会误判成没接线（2026-11-07 更正）。
+  // Clothes2（体型）是 0~1 的连续量：0=默认 / 0.4=中等 / 1=Q 版小个子。
+  // 其余几项都是开关，写 0/1 就够了。
+  const LOOK_KEYS = ['key10', 'key11', 'key12', 'Clothes1', 'Clothes2', 'Clothes3', 'Clothes4', 'Clothes5']
+  // 连续量 vs 开关：五个 Clothes 都是 0~1 的连续参数，中间值有真实视觉意义
+  // （鞋子是 10 个部件的透明度渐变、裙子是两套下摆交叉淡入、尾巴也是渐变），
+  // 所以一律原样写进去；只有道具类（钢盆 / 两副眼镜）是开关，塌成 0/1 才不会粘出半边。
+  const LOOK_CONT = { Clothes1: 1, Clothes2: 1, Clothes3: 1, Clothes4: 1, Clothes5: 1 }
+  let LOOK = {}  // 只在拿到值后才写；缺省项不碰，保留模型默认
+  function applyLook(cm) {
+    for (const k of LOOK_KEYS) {
+      const v = LOOK[k]
+      if (typeof v !== 'number') continue
+      const w = LOOK_CONT[k] ? Math.min(1, Math.max(0, v)) : (v ? 1 : 0)
+      try { cm.setParameterValueById(k, w) } catch {}
+    }
+  }
+  // 调试钩子：直接改内存里的外观（不落盘），测中间值时用
+  window.__setLook = (patch) => { for (const k in patch) LOOK[k] = patch[k]; return JSON.stringify(LOOK) }
+  window.__look = () => JSON.stringify(LOOK)
+  // 模型自带的 8 个 Expression（钢盆/黑框/单片/裙子切换/尾巴开关 + 三档体型）是 Add 型，
+  // 改的正是上面这批参数。常驻外观在 beforeModelUpdate 最后写，会把它们压死，
+  // 所以这几个名字统一改走 LOOK —— 一个参数只有一个真相源，不然两套互相打架。
+  const LOOK_EXPR = { '钢盆': 'key10', '黑框眼镜': 'key11', '单片眼镜': 'key12', '裙子切换': 'Clothes1', '尾巴开关': 'Clothes5' }
+  // 体型三档是「设值」不是「开关」，单列一张表 —— 走 toggle 会让 0.4 在两个值之间来回弹
+  const LOOK_SET = { '体型1': 0.4, '体型2': 1.0, '默认体型': 0 }
+  /** 她说话时用标签切外观：改内存 + 让主进程写盘（持久化），不改模型 Expression */
+  function setLookByTag(name) {
+    const key = LOOK_EXPR[name]
+    if (key) {
+      const next = { [key]: LOOK[key] ? 0 : 1 }
+      if (key === 'key11') next.key12 = 0
+      if (key === 'key12') next.key11 = 0
+      for (const k in next) LOOK[k] = next[k]
+      try { P && P.setLook && P.setLook(next) } catch {}
+      P && P.log('外观切换：' + name + ' → ' + JSON.stringify(next))
+      return true
+    }
+    if (name in LOOK_SET) {
+      const v = LOOK_SET[name]
+      LOOK.Clothes2 = v
+      bodyLevel = v            // 交给每帧的 bodyCur 平滑追上，镜头不硬跳
+      try { P && P.setLook && P.setLook({ Clothes2: v }) } catch {}
+      P && P.log('体型切换：' + name + ' → ' + v)
+      return true
+    }
+    return false
+  }
+
+  // ---------- 换衣模式（右键开关） ----------
+  // 模型本来就有 5 个换装参数，但默认是半身取景，裙子下摆、鞋、腿全在画外 ——
+  // 只弹个面板让她换，等于点了半天什么也看不见。所以这个模式是两件事一起做：
+  // ① 切全身视图 ② 在窗口右侧空白处竖排控件。缺一个都不成立。
+  // 退出时切回进入前的视图，不硬编码回 bust（用户可能本来就在全身模式）。
+  //
+  // 哪些参数能无级：不看截图猜，直接读 Cubism Core 的 drawable 不透明度逐档扫
+  // （node dress-parts.cjs，2026-11-07）：
+  //   Clothes2 体型   只有两颗阴影动，真正的变化是顶点形变（腿缩短），
+  //                   取景另有 BODY_TABLE 插值，所以任意中间值都成立 —— 唯一真无级的
+  //   Clothes1 裙子   81 个部件在 0.5→0.6 之间整组对切，0 和 1 之间没有中间态 —— 只能两档
+  //   Clothes4 鞋子   12 个部件 1.00→0.00 线性，但语义上就是「穿 / 脱」，做选项更直白
+  //   Clothes5 尾巴   35 个部件 0.00→1.00 线性，同上，做「露出 / 隐藏」选项
+  //   Clothes3 胸口   0→1 衣服一件都没动，模型里根本没接线 —— 不做
+  // 另外：模型没有「袜子」参数。Clothes4 的 label 就叫「鞋子」，它驱动的 10 个部件
+  // （ArtMesh580-583 / 632 左、641-644 / 654 右）顶点全在 y -0.95~-0.78 的脚踝区间，
+  // 是皮鞋的鞋身、鞋底、蝴蝶结、高光；白丝袜是常态，不归任何参数管。
+  // 三条真连续量。判定方式不是看截图猜，而是冻结所有动画后直接比顶点坐标
+  // （node dress-verts3.cjs，噪声 0）：
+  //   Clothes1 裙子：0→0.5 裙摆整体下移 0.25 个画幅高（及踝 ↔ 及膝），逐档线性；
+  //                 0.5→0.6 会整组换款（长裙 78 个部件退场、短裙 48 个上场），有一次跳变；
+  //                 0.6→1 短裙继续缩到大腿根。所以一条滑块能覆盖「长裙→短裙→超短」。
+  //   Clothes3 胸口：0→1 胸口白色布料高度 +0.029、下缘 +0.03（衣服被撑起），
+  //                 0.2 以后才明显，是真正无级的「领口高低 / 胸围」。
+  //   Clothes2 体型：顶点形变 + 取景插值，本来就无级。
+  const DRESS_SLIDERS = [
+    // 方向：往右 = 人变大。Clothes2 越大越 Q（腿缩短），所以滑块位置取反。
+    { name: '体型', key: 'Clothes2', def: 0, invert: true,
+      fmt: (v) => (v <= 0.02 ? '默认' : v >= 0.98 ? 'Q 版' : '中' + Math.round(v * 100) + '%') },
+    { name: '胸口', key: 'Clothes3', def: 0,
+      fmt: (v) => (v <= 0.03 ? '平' : v >= 0.97 ? '满' : Math.round(v * 100) + '%') },
+    { name: '裙长', key: 'Clothes1', def: 1,
+      // 百分比是「相对布长」，把两套裙子拼成一条单调的尺：0=及踝(100%) → 0.5=及膝(55%)
+      // → 0.55 换短裙(47%) → 1=超短(20%)。不直接显示参数值，是怕 1 被读成「长度 0」。
+      fmt: (v) => {
+        const pct = v < 0.5 ? 100 - v * 90 : 50 - (v - 0.5) * 60
+        return (v < 0.5 ? '长裙 ' : '短裙 ') + Math.max(15, Math.round(pct)) + '%'
+      } },
+  ]
+  const DRESS_BTNS = [
+    { name: '鞋子', opts: [['穿着', { Clothes4: 0 }], ['脱掉', { Clothes4: 1 }]] },
+    { name: '尾巴', opts: [['隐藏', { Clothes5: 0 }], ['露出', { Clothes5: 1 }]] },
+    { name: '眼镜', opts: [['不戴', { key11: 0, key12: 0 }], ['黑框', { key11: 1, key12: 0 }], ['单片', { key12: 1, key11: 0 }]] },
+    { name: '钢盆', opts: [['不要', { key10: 0 }], ['扣上', { key10: 1 }]] },
+  ]
+  let dressOn = false
+  let dressPrevView = 'bust'
+  let dressDrag = false      // 滑块拖动中：强制保持窗口可交互（见鼠标穿透那一节）
+  // 一组 patch 是否全部命中当前外观。缺省项按 0 算（模型默认值），
+  // 所以旧 pet.json 里没有 Clothes4 时「穿着」也是亮的。
+  function dressActive(patch) {
+    for (const k in patch) if ((LOOK[k] || 0) !== patch[k]) return false
+    return true
+  }
+  function lookVal(row) {
+    const v = LOOK[row.key]
+    return typeof v === 'number' ? Math.min(1, Math.max(0, v)) : row.def
+  }
+  function renderDress() {
+    const sliders = DRESS_SLIDERS.map((row, i) => {
+      const v = lookVal(row)
+      const pos = row.invert ? 1 - v : v           // 滑块位置（0~1），不一定等于参数值
+      const pct = Math.round(pos * 100)
+      return '<div class="r sl"><em>' + row.name + '</em>' +
+        '<input type="range" min="0" max="100" step="1" value="' + pct + '" data-i="' + i + '"' +
+        ' style="--pct:' + pct + '%"><span class="v">' + row.fmt(v) + '</span></div>'
+    }).join('')
+    const btns = DRESS_BTNS.map((row, i) =>
+      '<div class="r"><em>' + row.name + '</em>' +
+      row.opts.map(([t, p], j) =>
+        '<button data-b="' + i + ',' + j + '" class="' + (dressActive(p) ? 'on' : '') + '">' + t + '</button>'
+      ).join('') + '</div>'
+    ).join('')
+    DRESS_ROWS_EL.innerHTML = sliders + '<div class="sep"></div>' + btns
+  }
+  // 拖动落盘节流：滑块每像素都发一次 IPC 会把 pet.json 写成筛子，
+  // 内存里的 LOOK 让每帧直接生效，停止拖动 240ms 后才写一次盘。
+  let lookSaveTimer = 0
+  let lookPending = {}
+  function setLookLive(patch) {
+    for (const k in patch) LOOK[k] = patch[k]
+    // 体型拖动要跟手：bodyCur 的 0.38s 平滑在连续拖动下会变成「镜头追不上手指」。
+    // 从面板连续调是主动操作，没有「切换要缓一下」的需求，直接到位。
+    if (typeof patch.Clothes2 === 'number') { bodyLevel = bodyCur = patch.Clothes2; layout() }
+    for (const k in patch) lookPending[k] = patch[k]
+    clearTimeout(lookSaveTimer)
+    lookSaveTimer = setTimeout(flushLook, 240)
+  }
+  function flushLook() {
+    clearTimeout(lookSaveTimer)
+    lookSaveTimer = 0
+    const p = lookPending
+    lookPending = {}
+    if (!Object.keys(p).length) return
+    try { P && P.setLook && P.setLook(p) } catch {}
+    P && P.log('换衣 → ' + JSON.stringify(p))
+  }
+  function applyDress(patch) {
+    setLookLive(patch)
+    flushLook()
+    renderDress()
+  }
+  function setDress(on) {
+    on = !!on
+    if (on === dressOn) return
+    dressOn = on
+    if (on) {
+      dressPrevView = viewMode
+      if (viewMode !== 'full') window.__setViewMode('full')
+      renderDress()
+      DRESS_EL.classList.add('show')
+    } else {
+      DRESS_EL.classList.remove('show')
+      if (viewMode !== dressPrevView) window.__setViewMode(dressPrevView)
+    }
+    try { P && P.setDress && P.setDress(on) } catch {}
+    P && P.log('换衣模式 → ' + (on ? '开（切全身）' : '关'))
+  }
+  // 滑块：只改自己那一行的数字，不整块重绘 —— 重绘会重建 input，把正在拖的手柄打断。
+  DRESS_ROWS_EL.addEventListener('input', (e) => {
+    const el = e.target
+    if (!el.matches || !el.matches('input[type=range]')) return
+    const row = DRESS_SLIDERS[+el.dataset.i]
+    const pos = el.value / 100
+    // 位置 → 参数值：体型滑块往右是「变大」，而参数越大越 Q，所以要取反
+    const applied = row.invert ? 1 - pos : pos
+    el.style.setProperty('--pct', Math.round(pos * 100) + '%')
+    const vEl = el.parentNode.querySelector('.v')
+    if (vEl) vEl.textContent = row.fmt(applied) // 显示真正生效的值，不是手指位置
+    setLookLive({ [row.key]: applied })
+  })
+  // 松手：两档的行把手柄吸回真实状态，并立刻落盘
+  DRESS_ROWS_EL.addEventListener('change', (e) => {
+    const el = e.target
+    if (!el.matches || !el.matches('input[type=range]')) return
+    const row = DRESS_SLIDERS[+el.dataset.i]
+    // 松手后手柄按真实值归位（体型是取反的，不能直接用参数值）
+    const v = lookVal(row)
+    const pct = Math.round((row.invert ? 1 - v : v) * 100)
+    el.value = pct
+    el.style.setProperty('--pct', pct + '%')
+    flushLook()
+  })
+  DRESS_ROWS_EL.addEventListener('pointerdown', (e) => {
+    if (e.target.matches && e.target.matches('input[type=range]')) dressDrag = true
+  })
+  window.addEventListener('pointerup', () => { dressDrag = false })
+  DRESS_ROWS_EL.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('button[data-b]')
+    if (!b) return
+    const [i, j] = b.dataset.b.split(',').map(Number)
+    applyDress(DRESS_BTNS[i].opts[j][1])
+  })
+  DRESS_DONE.addEventListener('click', () => setDress(false))
+  // 右键选单项也能关（和面板按钮一样的出口）
+  DRESS_EL.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); setDress(false) })
+  window.__dress = (on) => { setDress(on === undefined ? !dressOn : on); return dressOn }
+  window.__dressState = () => JSON.stringify({ on: dressOn, prev: dressPrevView, view: viewMode, look: LOOK })
+
+  // ---------- 前景遮挡（bust 模式底缘的一条道具带） ----------
+  // 为什么是独立图层而不是模型部件：模型是公皮，动模型踩许可；而且这里只需要
+  // 解决「窗口底边把身体切平」这一件事，不需要它参与 Live2D 变形。
+  // 也不动取景 —— bust 的可见范围本来就到腰上，条带只占最底部 118px，
+  // 挡住的正是被切平的那一段，所以最大档的比例和动画一点没变。
+  const FORE_EL = document.getElementById('fore')
+  const FORE_IMG = document.getElementById('foreImg')
+  const FORE_KINDS = ['planter', 'snack', 'dinner']   // 与 fore/ 目录下的文件名一一对应
+  let foreKind = 'none'
+  function syncFore() {
+    FORE_EL.classList.toggle('show', viewMode === 'bust' && foreKind !== 'none')
+  }
+  function applyFore(kind) {
+    foreKind = FORE_KINDS.indexOf(kind) >= 0 ? kind : 'none'
+    if (foreKind === 'none') { FORE_EL.classList.remove('show'); return }
+    FORE_IMG.src = '/app/renderer/fore/' + foreKind + '.png'
+    syncFore()
+  }
+  window.__setFore = (k) => { applyFore(k); P && P.log('前景 → ' + foreKind) }
+  window.__fore = () => JSON.stringify({ kind: foreKind, shown: FORE_EL.classList.contains('show'), view: viewMode })
+  // 预加载：切换时不闪白
+  for (const k of FORE_KINDS) { const im = new Image(); im.src = '/app/renderer/fore/' + k + '.png' }
+
+  // 模型内容的真实包围盒（模型单位）。画布是 3749×7697，但内容只占中间这一块：
+  // 左右两侧是透明留白，底部还空着 372 单位。按「画布」取景会白裁又白留 ——
+  // 这正是「上半身特写把两侧长发切断」的根因：可见宽度只覆盖到内容宽度的 48%。
+  // 数据来源：full 模式截图 + alpha 扫描（.frames/full.png，2026-11-06 实测）。
+  // 换模型后要重测：node fullshot.cjs，再扫描 .frames/full.png 的不透明包围盒。
+  const CONTENT = { x0: 545, x1: 3706, y0: 764, y1: 7325 }
+  const CONTENT_W = CONTENT.x1 - CONTENT.x0      // 3161
+  const CONTENT_H = CONTENT.y1 - CONTENT.y0      // 6561
+  const CONTENT_CX = (CONTENT.x0 + CONTENT.x1) / 2 // 2125.5（比画布中心偏右 251，尾巴在右）
+
+  // ---------- 体型（Clothes2）取景补偿 ----------
+  // Clothes2 不是相机缩放，是顶点变形：腿缩短为主、头相对变大，所以内容包围盒
+  // 不只是「整体缩小」，中心和宽高比都在变。实测（2026-11-06，bust 视图 sc=0.18816、
+  // 窗口 720×780，每档 8 帧取顶边中位数）：
+  //   内容高 6561 → 4229 → 1777 单位，内容中心 y 4020 → 2846 → 1760。
+  // 不补偿的话 Q 版档会缩在画面正中偏上、脚下一大片空白，看着像渲染坏了。
+  // b=0 那一行必须与 CONTENT 完全一致，这样默认体型的取景逐像素不变。
+  //
+  // 每档除了包围盒，还有一份**独立的取景配方**——体型不是等比缩放，
+  // 套同一个公式必然有一档难看（中号会变成「小全身」而不是半身）。
+  //   fill  = 内容高 / 窗口可见高  1.70 = 只看到 59%（半身特写）；0.46 = 上下留白
+  //   head  = 内容顶到窗口顶的像素 决定「头顶留多少空」，是构图的垂直位置
+  //   gest  = 做抬手动作时的退让幅度乘数（1.0 = 原来的 30%，0 = 完全不退）
+  //   fscale/fbot = 全身视图（full）的额外缩放与底部留白
+  // 默认档那两行的 fill/head 不是随手填的：它们是从「原公式在当前 720×783 窗口下的
+  // 输出」反算回来的，所以 bodyCur=0 时 layout 算出的 sc/y/x 与改动前逐位一致。
+  //   fdx   = 前景道具的水平微调（CSS px @720 窗口宽）。她不在窗口正中：
+  //           默认档按 2125.5 取景，身体偏左约 40px；中号/Q 版按重标过的 cx 取景，
+  //           反而偏右几像素。前景图本身是居中裁的，所以必须按档补这个差，
+  //           否则「她站在桌子后面」会读成「她和桌子各站一边」。
+  const BODY_TABLE = [
+    { b: 0.0, h: 6561, w: 3161, cy: 4020, cx: 2125.5, fill: 1.7032, head: 163.8, gest: 1.00, fscale: 1.00, fbot: 0, fdx: -40 },
+    { b: 0.4, h: 4229, w: 2112, cy: 2846, cx: 1850,   fill: 1.55,   head: 118,    gest: 1.15, fscale: 1.00, fbot: 0, fdx: 13 }, // 半身：头顶留 118，看到腰胯
+    { b: 1.0, h: 1777, w: 1296, cy: 1760, cx: 1867,   fill: 0.4613, head: 224,    gest: 0.00, fscale: 0.85, fbot: 123, fdx: 6 }, // Q 版：整个小人，动作不退
+  ]
+  let bodyLevel = 0 // 目标档位（外部设定）
+  let bodyCur = 0   // 每帧平滑后的当前档位，切换时镜头渐变而不是硬跳
+  function bodyShape (b) {
+    const t = BODY_TABLE
+    if (!(b > 0)) return t[0]        // 严格默认：原样返回，取景与改动前完全一致
+    if (b >= t[2].b) return t[2]
+    const i = b < t[1].b ? 0 : 1
+    const k = (b - t[i].b) / (t[i + 1].b - t[i].b)
+    const lerp = (a, c) => a + (c - a) * k
+    return {
+      h: lerp(t[i].h, t[i + 1].h),
+      w: lerp(t[i].w, t[i + 1].w),
+      cy: lerp(t[i].cy, t[i + 1].cy),
+      cx: lerp(t[i].cx, t[i + 1].cx),
+      fill: lerp(t[i].fill, t[i + 1].fill),
+      head: lerp(t[i].head, t[i + 1].head),
+      gest: lerp(t[i].gest, t[i + 1].gest),
+      fscale: lerp(t[i].fscale, t[i + 1].fscale),
+      fbot: lerp(t[i].fbot, t[i + 1].fbot),
+      fdx: lerp(t[i].fdx, t[i + 1].fdx),
+    }
+  }
+
+  // 取景距离（模型单位）：数值越大 = 镜头越远。3000 是「想要的」紧特写，
+  // 但真实取景还要过宽度这一关（见 layout），窄窗口下会被自动推远。
+  let bustUnits = 3000
+  let bustUnitsCur = 3000
+  let gestureK = 0       // 当前动作的「展开程度」0~1，驱动额外退让
+  window.__setBustUnits = (n) => {
+    const v = Number(n)
+    if (v >= 1800 && v <= 9000) { bustUnits = v; bustUnitsCur = v; layout() }
+  }
+  function layout() {
+    if (!model) return
+    if (viewMode === 'bust') {
+      const topPad = 20
+      const avail = innerHeight - topPad
+      const sh = bodyShape(bodyCur)
+      // 三个约束取最远的那个：
+      //   ① 必须多宽 —— 当前体型的宽 × 1.15 要整个塞进窗口，否则两侧长发/尾巴被切
+      //      15% 余量装三件事：待机微摆带长发左右晃、动作里的重心侧移、抬手时变宽 10%。
+      //   ② 想要多近 —— fill 换算出的取景距离（每档独立标定，这是「半身」的来源）
+      //   ③ 面板「想要的紧特写」—— 按体型等比缩放，否则 Q 版会被它顶住不退
+      // 用 sh.w（而不是常量 CONTENT_W）是关键：中号档按自己的宽度约束自然得到半身，
+      // 不再需要「装下全身」那条会把画面拉到全身的强制约束。
+      const uByWidth = sh.w * 1.15 * avail / innerWidth
+      const uByFill = sh.h / sh.fill
+      const uNear = bustUnitsCur * (sh.h / CONTENT_H)
+      // 动作幅度越大，身体展开越宽（抬手臂 + 重心侧移），再退一段给它腾地方。
+      // 退让幅度按体型走（sh.gest）：720 宽近景下默认档要 30%（12% 时欢呼的指尖、
+      // 摊手的整掌都会出画）；中号是半身、只在画面里抬手臂，12% 够用；
+      // Q 版整个人只占一半画面，压根不用退 —— 它本来就不出画，退了只是「莫名缩小」。
+      const u = Math.max(uByWidth, uByFill, uNear) * (1 + 0.3 * sh.gest * gestureK)
+      const sc = avail / u * zoomLevel
+      model.scale.set(sc)
+      model.x = innerWidth / 2 - sh.cx * sc // 按内容中心对齐，不是画布中心
+      // 垂直：内容顶落在 head 像素处。head 是每档标定出来的构图位置，
+      // 默认档的 166.47 正好让内容顶落在 171px —— 与原来「模型贴 topPad」的结果一致。
+      model.y = sh.head - (sh.cy - sh.h / 2) * sc
+    } else {
+      const topPad = 118
+      // 全身视图的语义是「我要看清整个人」，所以变小之后照样铺满窗口。
+      // 用 bw 权重插值到默认值上，bodyCur=0 时 cw/ch/cx/cb 与原常量逐位相同。
+      const bs = bodyShape(bodyCur)
+      const bw = Math.min(1, Math.max(0, bodyCur / 0.15))
+      const cw = CONTENT_W + (bs.w - CONTENT_W) * bw
+      const ch = CONTENT_H + (bs.h - CONTENT_H) * bw
+      const ccx = CONTENT_CX + (bs.cx - CONTENT_CX) * bw
+      const cbot = CONTENT.y1 + (bs.cy + bs.h / 2 - CONTENT.y1) * bw
+      // fscale：全身视图的额外缩放。Q 版铺满窗口会大得像个正常身高的人，
+      // 失去「小小一只」的观感，所以单独缩到 85%；默认/中号档是 1.0，不受影响。
+      const fs = 1 + (bs.fscale - 1) * bw
+      const fbot = bs.fbot * bw
+      const sc = Math.min((innerWidth - 24) / cw, (innerHeight - topPad) / ch) * zoomLevel * fs
+      model.scale.set(sc)
+      model.x = innerWidth / 2 - ccx * sc
+      model.y = innerHeight - fbot - cbot * sc // 踩到窗口底边，不是画布底边（否则人物浮空）
+    }
+    // 前景道具跟着她的身体走：图是按窗口居中裁的，而她并不站在窗口正中，
+    // 所以每档补一个 fdx（默认档偏左 40px，中号/Q 版偏右几像素）。
+    // 用 innerWidth/720 归一，换窗口宽度时比例不变。
+    FORE_EL.style.transform = 'translateX(' + (bodyShape(bodyCur).fdx * innerWidth / 720).toFixed(1) + 'px)'
+  }
+  window.__setViewMode = (m) => { viewMode = m === 'full' ? 'full' : 'bust'; syncStageMask(); layout(); syncFore() }
+  // 体型排障：目标档位 vs 每帧平滑到的当前值，以及取景实际用的缩放
+  window.__body = () => JSON.stringify({ level: bodyLevel, cur: +bodyCur.toFixed(4), zoom: +zoomLevel.toFixed(3), sc: model ? +model.scale.x.toFixed(6) : null })
+  // 取景标定用：当前档位的配方 + 实际落在屏幕上的位置，调 fill/head 时看这个
+  window.__gest = () => gestureK.toFixed(3)
+  window.__shape = () => {
+    const s = bodyShape(bodyCur)
+    const sc = model ? model.scale.x : 0
+    const ctop = s.cy - s.h / 2, cbot = s.cy + s.h / 2
+    return JSON.stringify({
+      b: +bodyCur.toFixed(3), fill: +s.fill.toFixed(4), head: +s.head.toFixed(1), gest: +s.gest.toFixed(2),
+      sc: +sc.toFixed(6), view: viewMode,
+      topPx: +(model.y + ctop * sc).toFixed(0),        // 内容顶离窗口顶多少像素
+      botPx: +(model.y + cbot * sc).toFixed(0),        // 内容底在窗口的位置
+      contentHpx: +(s.h * sc).toFixed(0),              // 内容在屏幕上多高
+      winH: innerHeight,
+    })
+  }
+  // 跳过过渡直接到位（截图/排查用：窗口被遮挡时 rAF 会掉帧，平滑跑不完）
+  window.__setBody = (v) => { bodyLevel = bodyCur = Math.min(1, Math.max(0, Number(v) || 0)); layout() }
+  window.addEventListener('resize', layout)
+
+  // ---------- 眼神追踪（以头部为直视中心） ----------
+  // pixi-live2d-display 的 model.focus 把「画布中心」(iw/2, ih/2) 当直视点；本模型画布 3749×7697，
+  // 中心在腰腹 → 眼神像以身体为中心。修法：把鼠标坐标平移 (画布中心-头部) 的屏幕差，
+  // 使「鼠标指着头 = 直视」。头部锚点用模型空间坐标，两种视图模式经 toGlobal 自动适配。
+  let headAnchor = { x: 1876, y: 1580 } // 模型空间眼睛中心（125% DPI 直视截图实测校准，__setHead 可调）
+  window.__setHead = (x, y) => { headAnchor = { x: Number(x), y: Number(y) } }
+  window.__headAnchor = () => headAnchor
+
+  // ---------- 注视驱动（自研）：不再调库的 model.focus() ----------
+  // 原因：库的 focus 写 ParamAngleX/Y/Z，而这三个参数在本模型是物理链的「输出」
+  // （AngleX → 弹簧 → ParamAngleX），写在物理之后会被下一帧物理冲掉，且头发/帽子/
+  // 蝴蝶结/耳朵全都不跟随。改为写物理「输入」AngleX/AngleY，让物理自己算 ParamAngle
+  // 并联动整组零件——这才是转动时头发会甩的原因。
+  let gaze = { x: 0, y: 0 }        // 鼠标位置归一化 -1..1
+  let gazeWeight = 1               // 0=完全不跟鼠标（演出中）1=完全跟随
+  let gazeHoldUntil = 0            // 演出期间暂停注视的截止时间戳
+  let lookX = 0, lookY = 0         // 眼球：快跟随（τ=0.09s）
+  let headGazeX = 0, headGazeY = 0 // 头部：慢跟随（τ=0.32s）→ 先瞥一眼再转头
+  // 物理输入通道：姿势与注视都写这几个，由物理派生 ParamAngle* 与身体角度
+  const DRIVE_KEYS = ['AngleX', 'AngleY', 'AngleZ', 'LeanInput', 'PositionX', 'PositionY', 'PositionZ']
+  const drive = { AngleX: 0, AngleY: 0, AngleZ: 0, LeanInput: 0, PositionX: 0, PositionY: 0, PositionZ: 0 }
+  window.__driveState = () => JSON.stringify(drive)
+  // 调试钩子：把注视直接摆到某个方向（配合 __freezeCursor=true 做对比截图）。
+  // 没有它的话脚本截图永远定格在「她正看着脚本运行时鼠标所在的那个方向」，
+  // 每一帧的基准都不一样，说话层那 2~4° 的变化会被 20° 的转头彻底淹没。
+  window.__setGaze = (x, y) => {
+    gaze.x = Math.max(-1, Math.min(1, Number(x) || 0))
+    gaze.y = Math.max(-1, Math.min(1, Number(y) || 0))
+    return `${gaze.x},${gaze.y}`
+  }
+  window.__gazeRadius = () => GAZE_RADIUS
+
+  // ---------- 待机微摆（idle）：没人理她的时候也要「活着」 ----------
+  // 为什么要自己算：模型的待机动作写的是 ParamAngleX/Y/Z，而这三个是物理链的**输出**，
+  // 每帧都会被物理重算覆盖——所以待机动作的摆动在我们的管线里等于被吃掉了，站着像块板。
+  // 参考 dsh-desktop-petbox 的做法（`add(id,v,keep=0.35)`：指针量叠在待机底噪之上，
+  // 待机留三成），这里改成全程保留待机摆动，指针量再往上加——静止和跟手指都有动感。
+  // 2026-11-06 重写（先生：「另一个桌宠默认站立会自然摆动」）：
+  // 原来这里是**四路各自独立周期**的正弦（0.37/0.29/0.23/0.47…），各转各的，
+  // 看着像几个零件分别被风吹，不像一个人的重心在慢慢换。
+  // 改成从**同一个相位 p** 派生、只错开相位差与倍频——各部位仍然不同步（这才是自然），
+  // 但共享同一个"呼吸节拍"，整体读起来是一个人。数值结构取自 petbox 的 sway 轨道
+  // （鲸语那套，先生认为更灵动的那个），周期放慢到 9.5s 更耐看。
+  const IDLE = { AngleX: 0, AngleY: 0, AngleZ: 0, LeanInput: 0, PositionX: 0, PositionY: 0, PositionZ: 0 }
+  let idleT = 0
+  let idleScale = 1              // 总幅度倍率（调试钩子 __setIdleScale）
+  const IDLE_PERIOD = 9.5        // 一次完整「换重心」的周期（秒）
+  window.__setIdleScale = (v) => { const n = Number(v); if (n >= 0 && n <= 3) idleScale = n }
+  function updateIdle(dt) {
+    idleT += dt
+    const p = idleT * 2 * Math.PI / IDLE_PERIOD
+    const a = idleScale
+    IDLE.PositionX = a * 3.0 * Math.sin(p)               // 重心左右挪（牵动髋/腿/裙）
+    IDLE.PositionY = a * 1.5 * Math.sin(2 * p + 0.4)     // 上下浮（两倍频 = 呼吸的起伏）
+    IDLE.PositionZ = a * 1.8 * Math.sin(p - 0.35)        // 前后重心（透视微变）
+    IDLE.AngleX = a * 2.2 * Math.sin(p - 0.6)            // 头随重心慢慢偏一点
+    IDLE.AngleY = a * 1.2 * Math.sin(2 * p - 0.3)        // 俯仰（跟呼吸同频）
+    IDLE.AngleZ = a * 2.0 * Math.sin(p - 0.45)           // 上半身侧倾（滞后于重心）
+    IDLE.LeanInput = a * 1.6 * Math.sin(2 * p - 1.1)     // 胸廓前后（呼吸感）
+  }
+
+  // ---------- 说话层（speech）：说话是「一条连续的动势」，不是一个姿势 ----------
+  // 为什么加这层（先生反馈「说话动作不灵动」的根因）：
+  //   原来 handleSpeak 只是挑一个大姿势（歪头/抬头/前探），postureCur 用 τ=0.12s 平滑过去，
+  //   然后**就静止了**——一句话说 5 秒，前 0.5 秒动一下，剩下 4.5 秒只有 idle 那 2° 底噪撑着，
+  //   观感上就是「说一句，动一下，然后变成雕塑」。而真人是：音量起伏带着下巴走、句子有节奏地
+  //   点头、句读处松一下、身体一直在换重心。这些全是**连续量**，选不出来，只能叠一层。
+  // 所以这一层永久在线，语音在播时权重→1，停了 τ=0.9s 自然退场，不需要谁去「收姿势」。
+  //
+  // 驱动信号：analyser 的 RMS（跟口型同源，在 playVoice 的 rAF 里写入 speechRaw）。
+  //   level  = 快升慢降的包络（升 τ=55ms / 降 τ=190ms）——升慢就跟不上音节，降快就一抖一抖像卡带
+  //   floor  = 慢速基线（τ=0.9s），代表「这句大概多大声」
+  //   onset  = level 高出 floor 的部分 → 送进弹簧 → 每个重音一下点头，句子长了会自己顶住
+  const SPEECH = {
+    w: 0,                     // 权重 0..1
+    t: 0,                     // 内部时间
+    level: 0, floor: 0,       // 音量包络 / 慢速基线
+    onset: 0, onsetV: 0,      // 重音弹簧（位移/速度）
+    swayPhase: Math.random() * Math.PI * 2, // 每次启动错相位，免得每句都同一个晃法
+  }
+  function updateSpeech(dt) {
+    SPEECH.t += dt
+    const tgt = (playing || Date.now() < speechFallbackUntil) ? 1 : 0
+    SPEECH.w += (tgt - SPEECH.w) * (1 - Math.exp(-dt / (tgt ? 0.15 : 0.9)))
+    if (SPEECH.w < 0.002) SPEECH.w = 0
+    const raw = playing ? speechRaw : 0
+    SPEECH.level += (raw - SPEECH.level) * (1 - Math.exp(-dt / (raw > SPEECH.level ? 0.055 : 0.19)))
+    SPEECH.floor += (SPEECH.level - SPEECH.floor) * (1 - Math.exp(-dt / 0.9))
+    // 重音 = 比基线高出来的部分。给弹簧一个**持续的力**而不是一次性冲量：
+    // 连续说话时它会一直顶着，句读时自己落下来 —— 这正是「一句一句」的呼吸感。
+    // 力系数 380 是按「稳态位移 = 力/刚度 = 380×accent/190 ≈ 2×accent」反推的：
+    // 初版给 34，稳态位移只有 0.13（= 0.1° 点头，实测完全看不见），等于白做。
+    const accent = Math.max(0, SPEECH.level - SPEECH.floor - 0.04)
+    let remain = Math.min(0.12, dt)
+    const h = 1 / 240
+    while (remain > 0) {
+      const step = Math.min(h, remain); remain -= step
+      SPEECH.onsetV += (accent * 380 - 190 * SPEECH.onset - 21 * SPEECH.onsetV) * step
+      SPEECH.onset += SPEECH.onsetV * step
+    }
+    if (Math.abs(SPEECH.onset) > 2.4) { SPEECH.onset = Math.sign(SPEECH.onset) * 2.4; SPEECH.onsetV *= 0.3 }
+  }
+  window.__speechState = () => JSON.stringify({ w: +SPEECH.w.toFixed(3), level: +SPEECH.level.toFixed(3), floor: +SPEECH.floor.toFixed(3), onset: +SPEECH.onset.toFixed(3) })
+
+  // ---------- 动作层（clip）：一条动作 = 多条关节轨道的合奏 ----------
+  // 设计动机（先生 2026-11-06）：「它全身很多关节都能动，为什么来来回回就那几个动作？
+  // 能不能抬手的同时扭腰、低头、前俯、摇摆？」
+  // 现有姿势表（POSTURES）的问题是「一个名字 = 一组静态目标值」，天然只能表达单一维度。
+  // 这里换成另一套模型：**一条动作 = 若干条独立的参数轨道**，每条轨道是一串关键帧，
+  // 全部按同一个时间轴采样后一起写进模型。于是「抬手 + 扭腰 + 低头」不是三个动作排队，
+  // 而是同一时刻三个通道各自在自己的曲线上跑。
+  //
+  // 通道前缀：
+  //   d.  → 物理输入（AngleX/Y/Z、LeanInput、PositionX/Y/Z），走 drive，物理会带起头发/裙子/耳朵
+  //   p.  → 其它参数（RArm/LForearm/ChestX1/LEar1…），在 beforeModelUpdate 覆盖写入
+  // 关键帧时间统一归一化到 0..1，配合每实例的 `scale` 就能让同一个动作每次时长略有不同。
+  //
+  // 三种「扩容」手段（这是动作种类能翻几倍的关键，不靠美术）：
+  //   ① 形态基底 base：先切到「举手/竖手指/狗尾草」那套部件，参数才有足够的位移空间
+  //      （实测裸参数只能让手臂张开 ~30°，切到举手形态后同一个 RArm=1 能把手指到耳侧）
+  //   ② 镜像 mirror：L↔R 参数互换、AngleX/AngleZ/PositionX 取反 → 一个动作变两个
+  //   ③ 随机 amp/scale/phase：每次播放幅度 ±15%、时长 ±12%、起始相位随机 → 同一动作不重复
+  // 动作库从 clips.json 加载 —— 这份文件是「活」的：
+  //   · 我或主人手改，桌宠 3 秒内自动热加载（不用重启）；
+  //   · 大肥鱼自己调 live2d_make_motion 工具生成，同样立刻生效；
+  //   · 文件写坏了也不会白屏：解析失败就保留上一版，只记一条日志。
+  // 她随时能长出新动作 —— 这正是「把创作能力交给她」的落点。
+  // ---------- 神情库（faces.json）：挂在脸上的「状态」，和播放一次就退场的「动作」是两回事 ----------
+  // 为什么要分两层：动作是「起手—落下—退场」，给它加包络才不会在首尾跳；
+  // 但脸不是这么活的 —— 笑着说一句，笑是**一直挂着**的，给它加包络就变成「笑一下闪过去」。
+  // 所以神情不做时间轴，只有「挂上 / 换掉 / 淡出」三件事。
+  // 规则抄自 WHALEL2D 的 Body.cs（作者手调、2026-11-02 审过）：
+  //   · 每个表情占一个通道（eyes/brows/mouth/tilt/turn/pitch/gaze/lean），同通道的新表情替换旧的；
+  //   · 不同通道互不干扰，碰到同一个参数时**相加** —— 这就是「一边转头一边看旁边，头会多转一点」。
+  let FACES = {}
+  let FACES_CFG = {}
+  let facesRaw = ''
+  let facesReady = false
+  async function loadFaces() {
+    try {
+      const r = await fetch('/faces.json?t=' + Date.now(), { cache: 'no-store' })
+      if (!r.ok) throw new Error('HTTP ' + r.status)
+      const txt = await r.text()
+      if (txt === facesRaw) return false
+      const j = JSON.parse(txt)
+      const src = (j && j.faces) || {}
+      const next = {}
+      let bad = 0
+      for (const name in src) {
+        const f = src[name]
+        if (!f || typeof f !== 'object' || !f.set || typeof f.set !== 'object') { bad++; continue }
+        next[name] = {
+          ch: f.ch || 'misc', set: f.set, expr: f.expr || '', when: f.when || '',
+          hold: Number(f.hold) || 3.5,
+        }
+      }
+      facesRaw = txt
+      FACES = next
+      FACES_CFG = (j && j.defaults) || {}
+      facesReady = true
+      P && P.log('神情库已加载：' + Object.keys(next).length + ' 条' + (bad ? '（跳过 ' + bad + ' 条格式不对的）' : ''))
+      return true
+    } catch (e) {
+      P && P.log('神情库加载失败（保留上一版 ' + Object.keys(FACES).length + ' 条）：', e.message)
+      return false
+    }
+  }
+  let CLIPS = {}
+  let clipsRaw = ''      // 上次成功加载的原文，用来判断是否真的变了
+  let clipsReady = false
+  const clipQueue = []   // 库还没到位就被点名的动作，先排队（模型冷启动那几秒）
+  async function loadClips() {
+    try {
+      const r = await fetch('/clips.json?t=' + Date.now(), { cache: 'no-store' })
+      if (!r.ok) throw new Error('HTTP ' + r.status)
+      const txt = await r.text()
+      if (txt === clipsRaw) return false
+      const j = JSON.parse(txt)
+      const src = (j && j.clips) || j || {}
+      const next = {}
+      let bad = 0
+      for (const name in src) {
+        const c = src[name]
+        if (!c || typeof c !== 'object' || !c.tracks || typeof c.tracks !== 'object') { bad++; continue }
+        next[name] = {
+          dur: Math.max(0.4, Math.min(20, Number(c.dur) || 2.4)),
+          base: c.base || '', expr: c.expr || '',
+          when: c.when || '', tags: Array.isArray(c.tags) ? c.tags : [],
+          tracks: c.tracks,
+        }
+      }
+      clipsRaw = txt
+      CLIPS = next
+      clipsReady = true
+      P && P.log('动作库已加载：' + Object.keys(next).length + ' 个动作' + (bad ? '（跳过 ' + bad + ' 条格式不对的）' : ''))
+      while (clipQueue.length) { const q = clipQueue.shift(); playClip(q.n, q.o) }
+      return true
+    } catch (e) {
+      P && P.log('动作库加载失败（保留上一版 ' + Object.keys(CLIPS).length + ' 个）：', e.message)
+      return false
+    }
+  }
+  window.__reloadClips = loadClips
+  window.__clipInfo = (n) => JSON.stringify(CLIPS[n] || null)
+  window.__clipCount = () => Object.keys(CLIPS).length
+  window.__clipNames = () => Object.keys(CLIPS)
+  setInterval(() => { loadClips(); loadFaces() }, 3000)   // 热加载心跳：文件一变，下一个三秒就生效
+  const clipPlayers = []
+  let clipDrive = {}     // 每帧重置：动作层对物理输入的贡献
+  let clipParam = {}     // 每帧重置：动作层对其它参数的贡献（覆盖写）
+  let clipParamAdd = {}  // 每帧重置：动作层对其它参数的贡献（叠加写，用于表情/眼睛，不破坏眨眼）
+  // ---------- 手型管理：只能靠模型自带的「收手」动作来还 ----------
+  // 踩过的坑（2026-11-06，连测三次才定位）：
+  //   · 原生动作「举手」「竖手指」会把 Movement2/Movement3 置 1，而它们是一次性动作、播完不还原；
+  //   · 于是播完「指人」再播「摊手」→ Movement = 0,1,1，两套手型叠在一起，手卡在胸前做怪形状，
+  //     而且这个脏状态会污染之后每一个动作。
+  //   · 想直接在参数层按回去是不行的：Movement* 属于模型内部按键参数，
+  //     在 beforeModelUpdate 里写 0，同帧 model.update() 立刻算回 1（实测写完立刻读 0、下一帧又 1）。
+  // 唯一可靠的办法：播它自带的「收手 / 收手指 / 收狗尾草」把开关关掉（实测能干净回到 0,0,0）。
+  // 所以形态变成一个有状态的东西：进新形态前先把旧形态收掉，收完再进。
+  const FORM_REVERSE = { 举手: '收手', 竖手指: '收手指', 狗尾草: '收狗尾草' }
+  // 收旧形态要等多久？实测（formdelay.cjs，逐 150ms 采样）：
+  //   收手把 Movement2 归零要 635ms，残留衰减到 1.9 秒才彻底；原先把等待写成 380ms，
+  //   那时开关还是 1，新形态一播就变成两套叠加 —— 「指人」之后再演任何动作手都是畸形的。
+  // 所以按各动作的真实时长留余量，宁可慢一点，也不要有脏手型。
+  const FORM_WAIT = { 举手: 720, 竖手指: 950, 狗尾草: 820 }
+  let formNow = ''
+  function playNativeMotion(name) {
+    const idx = MOTION_INDEX[name]
+    if (idx == null || !model) return false
+    try { model.internalModel.motionManager.startMotion('Motion', idx, 3); return true } catch { return false }
+  }
+  // 返回需要等待的毫秒数（收旧形态要给它一点时间跑，不然两个动作会互相顶掉）
+  function setForm(base) {
+    base = base || ''
+    if (base === formNow) return 0
+    const prev = formNow
+    formNow = base
+    if (prev && FORM_REVERSE[prev]) { playNativeMotion(FORM_REVERSE[prev]); return FORM_WAIT[prev] || 720 }
+    return 0
+  }
+  window.__form = () => JSON.stringify({ now: formNow })
+  // 手臂类关节：这些轨道一动，手就会跑出「上半身特写」的画框 → 触发动作取景后退
+  const ARM_KEY_RE = /Arm|Forearm|Wrist|Hand|Param36|Param41|Param42|Param62|Param60|Param61|Param25|Param44/
+  let gestureZoom = 0   // 正在做手势的动作数量（>0 时镜头后退）
+  function sampleTrack(keys, u) {
+    if (u <= keys[0][0]) return keys[0][1]
+    for (let i = 1; i < keys.length; i++) {
+      if (u <= keys[i][0]) {
+        const a = keys[i - 1], b = keys[i]
+        const k = (u - a[0]) / Math.max(1e-6, b[0] - a[0])
+        return a[1] + (b[1] - a[1]) * (k * k * (3 - 2 * k)) // smoothstep：进出都缓，没有折线感
+      }
+    }
+    return keys[keys.length - 1][1]
+  }
+  // 镜像：左↔右参数互换、横向的转向/位移取反。一个动作直接变两个。
+  // 注意：这套模型左右臂的 Z 轴参数是**数字编号**而不是 L/R 前缀
+  // （Param36=R大臂z / Param62=L大臂z、Param41=R小臂Z / Param60=L小臂Z、
+  //   Param42=R手腕Z / Param61=L手腕Z、Param25=右手Z / Param44=左臂Z），
+  // 只按前缀换会漏掉它们，镜像出来的动作会出现「右臂动了两次、左臂没动」。
+  const MIRROR_NUM = { Param36: 'Param62', Param62: 'Param36', Param41: 'Param60', Param60: 'Param41', Param42: 'Param61', Param61: 'Param42', Param25: 'Param44', Param44: 'Param25' }
+  function mirrorKey(k) {
+    const pre = k.slice(0, 2)
+    if (pre !== 'p.' && pre !== 'a.') return k
+    const id = k.slice(2)
+    if (MIRROR_NUM[id]) return pre + MIRROR_NUM[id]
+    if (id.startsWith('R')) return pre + 'L' + id.slice(1)
+    if (id.startsWith('L')) return pre + 'R' + id.slice(1)
+    return k
+  }
+  function playClip(name, opts = {}) {
+    const c = CLIPS[name]
+    if (!c) {
+      // 库还没加载完就点名（模型冷启动那几秒）：先排队，加载完自动补播，别当错误吞掉
+      if (!clipsReady) { clipQueue.push({ n: name, o: opts }); loadClips(); return true }
+      P && P.log('不认识的动作「' + name + '」')
+      return false
+    }
+    const mirror = opts.mirror === true
+    // 形态：先把上一个形态收掉（必要时等它跑完），再进本动作要的形态
+    const formDelay = setForm(c.base)
+    if (!formDelay) playNativeMotion(c.base)
+    if (c.expr) { try { model && model.expression(c.expr) } catch {} }
+    // 这条动作会不会把手甩出画框？看手臂轨道的最大幅度，超过 0.3 就认为「要抬手」
+    let armMag = 0
+    for (const k in c.tracks) {
+      if (!ARM_KEY_RE.test(k)) continue
+      for (const pt of c.tracks[k]) if (Math.abs(pt[1]) > armMag) armMag = Math.abs(pt[1])
+    }
+    const gesture = armMag > 0.3
+    // 重复次数：同一个动作连做 N 次（「快点头×3」= 惊疑追问，「慢点头×1」= 深思）。
+    // 上限 5：再多总时长就超过她这一句话了，观众只会觉得卡住。
+    const reps = Math.max(1, Math.min(5, Math.round(Number(opts.repeat) || 1)))
+    const begin = () => {
+      if (opts.current && !opts.current()) return
+      if (gesture) gestureZoom++
+      clipPlayers.push({
+        c, name, t: 0, reps,
+        // 有显式修饰符（amp/speed）时不再随机抖动：她说「慢点头」，每一次都该是慢的，
+        // 否则修饰符的语义就被随机数吃掉了。没修饰时才抖，让同一个动作不重复。
+        dur: c.dur * (opts.speed || (0.9 + Math.random() * 0.25)), // 时长 ±12%：同一动作不会每次都一样长
+        amp: opts.amp || (0.86 + Math.random() * 0.3),             // 幅度 ±15%
+        mirror, gesture, armMag,
+        phase: Math.random() * 0.06,                               // 起始相位抖动，避免总是从同一个点起手
+      })
+    }
+    // 需要先收旧形态的：等它跑完再进本形态并开始播，否则两个动作会互相顶掉
+    if (formDelay) setTimeout(() => { if (!opts.current || opts.current()) { playNativeMotion(c.base); begin() } }, formDelay)
+    else begin()
+    return true
+  }
+  // 本帧汇总：动作层（clip）打底，神情层（face）再叠上去 —— 两者写的是同一批字典，
+  // 所以在 beforeModelUpdate 那一处统一应用，不用改那边两遍。
+  function updateClips(dt) {
+    clipDrive = {}; clipParam = {}; clipParamAdd = {}; faceParamW = {}
+    if (clipPlayers.length) runClipPlayers(dt)
+    updateFaces(dt)
+  }
+  function runClipPlayers(dt) {
+    for (let i = clipPlayers.length - 1; i >= 0; i--) {
+      const pl = clipPlayers[i]
+      pl.t += dt
+      const u = Math.min(1, (pl.t / pl.dur) + pl.phase)
+      const c = pl.c
+      // 进出各留一小段包络，避免动作起始/结束在参数上「啪」地跳一下
+      const env = Math.min(1, u / 0.12) * Math.min(1, (1 - u) / 0.15)
+      for (const rawKey in c.tracks) {
+        const key = pl.mirror ? mirrorKey(rawKey) : rawKey
+        const v = sampleTrack(c.tracks[rawKey], u) * pl.amp * env
+        if (key.startsWith('d.')) {
+          const dk = key.slice(2)
+          let val = v
+          if (pl.mirror && (dk === 'AngleX' || dk === 'AngleZ' || dk === 'PositionX')) val = -val
+          clipDrive[dk] = (clipDrive[dk] || 0) + val
+        } else if (key.startsWith('a.')) {
+          // 叠加通道：给「表情类」参数用。表情若走覆盖写会把眨眼/口型一起写死，
+          // 变成一张不动的脸；叠加写只在原值上加一个偏移，眨眼和说话照旧。
+          const id = key.slice(2)
+          clipParamAdd[id] = (clipParamAdd[id] || 0) + v
+        } else {
+          clipParam[key.slice(2)] = v   // 同一参数被多个动作写：后播的覆盖（与 Live2D 多 MotionManager 行为一致）
+        }
+      }
+      if (pl.t >= pl.dur) {
+        // 重复动作（×N）：原地从头再来，不重新入队 —— 这样手臂不会「回到起点再抬一次」，
+        // 而是一个连贯的来回。phase 清零让包络从 0 起，接缝不跳。
+        if (pl.reps > 1) {
+          pl.reps--
+          pl.t -= pl.dur
+          pl.phase = 0
+          continue
+        }
+        clipPlayers.splice(i, 1)
+        if (pl.gesture) gestureZoom = Math.max(0, gestureZoom - 1)
+        // 最后一个动作结束：把手型还回去（播「收手/收手指」），别让它留在身上
+        if (!clipPlayers.length) setForm('')
+      }
+    }
+  }
+
+  // ---------- 神情层 ----------
+  // 持有表：通道 → { name, f, until, w }。w 是这一条的权重（0..1），用来淡入淡出。
+  const faceHeld = {}
+  let faceParamW = {}      // 覆盖型参数的混合权重：clipParam 里走 blend 的那些
+  let faceExprNow = ''     // 当前挂着的 exp3 贴片（Pixi 的表达式队列一次只能跑一个）
+  // 头部角度和前后倾走物理输入，这样头发/裙子/耳朵会跟着甩；直接写 Param 会硬。
+  const FACE_DRIVE = {
+    ParamAngleX: 'AngleX', ParamAngleY: 'AngleY', ParamAngleZ: 'AngleZ',
+    LeanInput: 'LeanInput', PositionX: 'PositionX', PositionY: 'PositionY',
+  }
+  function holdFace(name, opts = {}) {
+    const f = FACES[name]
+    if (!f) { P && P.log('不认识的神情「' + name + '」'); return false }
+    const hold = Math.max(0.3, Math.min(120, Number(opts.hold) || f.hold || 3.5))
+    const prev = faceHeld[f.ch]
+    faceHeld[f.ch] = {
+      name, f, until: performance.now() + hold * 1000,
+      // 同一个神情再点一次：不重置权重，免得闪一下
+      w: prev && prev.name === name ? prev.w : 0,
+    }
+    if (f.expr) {
+      faceExprNow = f.expr
+      try { model && model.expression(f.expr) } catch {}
+    }
+    P && P.log('神情「' + name + '」挂上 ' + hold.toFixed(1) + 's（通道 ' + f.ch + '）')
+    return true
+  }
+  function clearFaces(immediate) {
+    for (const ch in faceHeld) {
+      // 普通清 = 走淡出（像笑意慢慢收）；复位要「一模一样回到初始」，那就当场抹掉
+      if (immediate) delete faceHeld[ch]
+      else faceHeld[ch].until = 0
+    }
+    return true
+  }
+  function updateFaces(dt) {
+    const tin = Number(FACES_CFG.in) || 0.12
+    const tout = Number(FACES_CFG.out) || 0.28
+    const now = performance.now()
+    let exprAlive = ''
+    for (const ch in faceHeld) {
+      const h = faceHeld[ch]
+      const live = now < h.until
+      if (!live && h.w <= 0.001) { delete faceHeld[ch]; continue }
+      // 线性逼近，比指数好预测：淡入 0.12 秒、淡出 0.28 秒（退得比进慢，看着才像「笑意淡下去」）
+      const step = dt / (live ? tin : tout)
+      h.w = live ? Math.min(1, h.w + step) : Math.max(0, h.w - step)
+      if (h.w <= 0.001) { if (!live) delete faceHeld[ch]; continue }
+      if (h.f.expr && live) exprAlive = h.f.expr
+      for (const id in h.f.set) {
+        const v = h.f.set[id]
+        // 注意：0 是**有效值**，不能当假值跳过。「闭眼」就是 ParamEyeLOpen=0，
+        // 「抿嘴」的嘴张度也是 0 —— 判空只能判 null/undefined（踩过：闭眼、眨单眼整条不生效）。
+        if (v == null) continue
+        if (id === 'ParamMouthOpenY') {
+          // 嘴张度：走叠加，跟口型取「谁张得更大」（下面的口型行会合并，不会互相盖）
+          clipParamAdd[id] = (clipParamAdd[id] || 0) + v * h.w
+        } else if (FACE_DRIVE[id]) {
+          const dk = FACE_DRIVE[id]
+          clipDrive[dk] = (clipDrive[dk] || 0) + v * h.w
+        } else {
+          // 覆盖型：不直接写死，而是带一个权重交给应用处 blend ——
+          // 这样 w=0.5 时是「原值和目标值的中间」，退场时能平滑回到她本来的脸，
+          // 而不是硬落到 0（ParamEyeLOpen 落到 0 就成了闭眼）。
+          if (faceParamW[id] == null) { clipParam[id] = v; faceParamW[id] = h.w }
+          else { clipParam[id] += v; faceParamW[id] = Math.max(faceParamW[id], h.w) }  // 不同通道碰同一参数：相加
+        }
+      }
+    }
+    // 贴片表情（脸红/黑脸…）：exp3 一次只能跑一个，所以谁活着谁占着；全退场了才放开。
+    if (faceExprNow && !exprAlive) {
+      faceExprNow = ''
+      // 注意路径：表达式的队列挂在 motionManager 底下，不是 internalModel 直下。
+      // 走错路径会抛错被 catch 吞掉 —— 表面没报错，脸却永远挂着上一个贴片（踩过）。
+      try {
+        const em = model && model.internalModel && model.internalModel.motionManager
+        em && em.expressionManager && em.expressionManager.resetExpression()
+      } catch {}
+    }
+  }
+  window.__holdFace = (n, hold) => holdFace(n, { hold })
+  window.__clearFaces = clearFaces
+  window.__faces = () => Object.keys(FACES)
+  window.__faceState = () => JSON.stringify(Object.values(faceHeld).map(h => ({ name: h.name, ch: h.f.ch, w: +h.w.toFixed(2), left: +((h.until - performance.now()) / 1000).toFixed(2) })))
+  window.__playClip = (n, o) => playClip(n, o || {})
+  window.__clips = () => Object.keys(CLIPS)
+  window.__clipState = () => JSON.stringify({ playing: clipPlayers.map(p => ({ name: p.name, t: +p.t.toFixed(2), dur: +p.dur.toFixed(2), amp: +p.amp.toFixed(2), mirror: p.mirror })) })
+  // 排查用：看动作层这一帧到底往哪写了什么（clipParam 覆盖 / clipParamAdd 叠加 / clipDrive 物理输入）
+  window.__dbg = () => JSON.stringify({ param: clipParam, add: clipParamAdd, drive: clipDrive })
+
+  // ---------- 随机微动作：时不时耳朵抖一下、身子轻晃一下 ----------
+  // 参考的是那种「站着手也不闲」的桌宠观感。做法不是开关式地硬切参数，而是给弹簧一个冲量，
+  // 让值自己振荡衰减——所以是「抖一下、余韵回弹」，不是生硬的 0→1→0。
+  //
+  // 耳朵为什么能这样驱动：本模型把兽耳做成了三段形变参数 LEar1/2/3（左）、REar1/2/3（右），
+  // 0 = 平摊下垂，0.35 半竖，1 = 竖起收拢。它们是物理 Setting83/85 的**输出**，
+  // 但我们在 beforeModelUpdate（物理已算完、上屏之前）写入即可覆盖，所以能强行让它抖。
+  // 上游其实挂着「眉毛 Y → Control → 耳朵」的链路（作者把挑眉当竖耳），但实测衰减太大
+  // （写满眉 ±1 只让 LEar 动 0.03，肉眼看不见），所以直接写耳朵参数更可靠。
+  const EAR_PARAMS = ['LEar1', 'LEar2', 'LEar3', 'REar1', 'REar2', 'REar3']
+  const MICRO = {
+    ear: 0, earV: 0,       // 耳朵竖起量（弹簧位移/速度）
+    tilt: 0, tiltV: 0,     // 上半身轻晃（走物理 AngleZ，头发裙子会跟着甩）
+    sink: 0, sinkV: 0,     // 身体一沉（走物理 PositionY）
+    scale: 1,              // 总幅度倍率
+  }
+  let microTimer = null
+  // 半隐式欧拉 + 固定子步（1/240s）：窗口被系统降频时 dt 会到 0.1 量级，
+  // 一步积分会把弹簧的峰值吃掉大半（实测只剩 0.1），切小步才稳定。
+  function springStep(o, key, vkey, k, c, dt, lim) {
+    let remain = Math.min(0.12, dt)
+    const h = 1 / 240
+    while (remain > 0) {
+      const step = Math.min(h, remain); remain -= step
+      o[vkey] += (-k * o[key] - c * o[vkey]) * step
+      o[key] += o[vkey] * step
+    }
+    if (Math.abs(o[key]) > lim) { o[key] = Math.sign(o[key]) * lim; o[vkey] *= 0.3 }
+  }
+  function stepMicro(dt) {
+    springStep(MICRO, 'ear', 'earV', 520, 13, dt, 1.15)    // ≈4Hz，0.5s 收敛 → 「抖一下」的手感
+    springStep(MICRO, 'tilt', 'tiltV', 150, 11, dt, 3.6)   // 慢一些，像整个人轻轻晃
+    springStep(MICRO, 'sink', 'sinkV', 210, 13, dt, 2.8)
+  }
+  // 冲量是按实测峰值反推的（v0=34 时耳朵峰值 0.97、tilt 1.72°、sink −1.17；
+  // 目标取耳朵 0.7 上下——半竖偏明显，肉眼一眼能看出但不夸张）。
+  const MICRO_ACTS = [
+    { name: '耳朵抖', w: 34, fire: () => { MICRO.earV += 24 } },
+    { name: '耳朵连抖', w: 14, fire: () => { MICRO.earV += 32; setTimeout(() => { MICRO.earV += 15 }, 280) } },
+    { name: '歪头轻晃', w: 22, fire: () => { MICRO.tiltV += 56 } },
+    { name: '身子一沉', w: 16, fire: () => { MICRO.sinkV -= 55 } },
+    { name: '抖完再晃', w: 14, fire: () => { MICRO.earV += 18; MICRO.tiltV += 36 } },
+  ]
+  function pickMicro() {
+    const total = MICRO_ACTS.reduce((s, a) => s + a.w, 0)
+    let r = Math.random() * total
+    for (const a of MICRO_ACTS) { r -= a.w; if (r <= 0) return a }
+    return MICRO_ACTS[0]
+  }
+  function scheduleMicro() {
+    clearTimeout(microTimer)
+    // 6~17 秒一次：太密会像抽搐，太疏又感觉不到「活着」
+    microTimer = setTimeout(() => {
+      fireMicroIfIdle()
+      scheduleMicro()
+    }, 6000 + Math.random() * 11000)
+  }
+  let microEnabled = true
+  window.__setMicroEnabled = (v) => { microEnabled = !!v; return microEnabled } // 调试钩子：关/开随机微动作
+  function fireMicroIfIdle() {
+    if (!microEnabled) return null
+    // 演出中不打扰：正在做动作/摆姿势/演对话/想事情时，身体交给演出
+    const busy = postureName !== '自然' || currentMotion !== '待机' || Date.now() < gazeHoldUntil || THINK.on
+    if (busy) return null
+    const a = pickMicro()
+    try { a.fire() } catch {}
+    return a.name
+  }
+  window.__fireMicro = fireMicroIfIdle  // 调试钩子：立刻触发一次
+  window.__kickMicro = (kind, s = 1) => { // 调试钩子：直接给某个弹簧一个冲量
+    const k = Number(s) || 1
+    if (kind === 'ear') MICRO.earV += 24 * k
+    else if (kind === 'tilt') MICRO.tiltV += 56 * k
+    else if (kind === 'sink') MICRO.sinkV -= 55 * k
+    return kind
+  }
+  window.__microState = () => JSON.stringify({ ear: +MICRO.ear.toFixed(3), tilt: +MICRO.tilt.toFixed(3), sink: +MICRO.sink.toFixed(3) })
+
+  // ---------- 思考态（DSH work 事件驱动） ----------
+  // 从哪来：DSH 的 pet 服务自带一套工作状态机（thinking / working / result / waiting /
+  // success / error，见 dsh-aurabot-qq/src/modules/pet/index.js 的 WORK_STATE_LABEL），
+  // 状态**一变**就 emit 一个 {type:'work', state, label} 到 /events。桌宠是长轮询客户端，
+  // 主进程原本只处理 proactive/behavior/focus，work 那条一直写着「M1 暂不处理」——这里接上。
+  // 所以不需要碰 DSH 会话层：宿主一开始想（turn/start → thinking），她这边就能自己入戏。
+  //
+  // 灵动的关键不是幅度大，而是**不规则**。单个正弦摆两下就露机械感，所以这里是三层叠加：
+  //   ① 慢摆正弦（周期 5~7s）——头的朝向缓慢漂移，像思路在走
+  //   ② 微颤正弦（≈1.1Hz，幅度很小）——活人的肌肉张力，静止也不会像木头
+  //   ③ 随机换注视点（1.2~2.8s 一次）——眼球在「脑内翻找」，这一层最像真在思考
+  const THINK = {
+    on: false, w: 0,        // 目标开关 / 平滑权重 0~1
+    state: '',              // 'thinking' | 'working'
+    t: 0,                   // 内部时间（秒）
+    ex: 0.5, ey: 0.6,       // 眼球目标（右上：回忆 / 构思）
+    exCur: 0, eyCur: 0,     // 眼球当前值（缓动后）
+    nextGlance: 0,          // 下次换注视点的时刻（performance.now 毫秒）
+    bubbleOn: false,
+  }
+  let thinkBubbleTimer = null
+  function setThinking(on, state) {
+    const next = Boolean(on)
+    const s = String(state || 'thinking')
+    if (next) THINK.state = s
+    if (next === THINK.on) return THINK.on
+    THINK.on = next
+    clearTimeout(thinkBubbleTimer)
+    if (next) {
+      // 延迟 700ms 再冒头：宿主一次短回环（想 0.3 秒）不该闪个气泡出来
+      thinkBubbleTimer = setTimeout(() => {
+        if (THINK.on && thinkEl) { thinkEl.classList.add('show'); THINK.bubbleOn = true }
+      }, 700)
+    } else if (thinkEl) {
+      thinkEl.classList.remove('show')
+      THINK.bubbleOn = false
+    }
+    return THINK.on
+  }
+  function updateThink(dt) {
+    THINK.t += dt
+    const target = THINK.on ? 1 : 0
+    const tau = target > THINK.w ? 0.5 : 0.35 // 进得慢一点（像被问题吸住），出得快一点
+    THINK.w += (target - THINK.w) * (1 - Math.exp(-dt / tau))
+    if (THINK.w < 0.002) THINK.w = 0
+    const now = performance.now()
+    if (now >= THINK.nextGlance) {
+      const working = THINK.state === 'working'
+      // working（在动手干活）看下面——盯着手上的活；thinking（在想）看斜上——在脑内找答案
+      THINK.ex = working ? -0.55 + Math.random() * 0.5 : 0.05 + Math.random() * 0.8
+      THINK.ey = working ? -0.6 + Math.random() * 0.35 : 0.4 + Math.random() * 0.45
+      THINK.nextGlance = now + (1200 + Math.random() * 1600)
+    }
+    THINK.exCur += (THINK.ex - THINK.exCur) * (1 - Math.exp(-dt / 0.16)) // 比跟鼠标慢：若有所思
+    THINK.eyCur += (THINK.ey - THINK.eyCur) * (1 - Math.exp(-dt / 0.16))
+  }
+  window.__setThinking = (on, state) => setThinking(on, state) // 调试钩子
+  window.__thinkState = () => JSON.stringify({
+    on: THINK.on, w: +THINK.w.toFixed(3), state: THINK.state,
+    ex: +THINK.exCur.toFixed(3), ey: +THINK.eyCur.toFixed(3), bubble: THINK.bubbleOn,
+  })
+
+  // 参考半径：鼠标离头部多远算「满幅」。必须基于屏幕尺度而不是窗口尺度——
+  // 窗口只有 380×780，按窗口算的话鼠标刚离开窗口就到顶，完全感觉不到远近。
+  // 取屏幕短边的 50%（1080p@125% ≈ 540px，4K@125% ≈ 864px）。
+  let GAZE_RADIUS = 600
+  function refreshGazeRadius() {
+    const sw = (window.screen && window.screen.width) || window.innerWidth
+    const sh = (window.screen && window.screen.height) || window.innerHeight
+    GAZE_RADIUS = Math.max(320, Math.min(sw, sh) * 0.5)
+  }
+  refreshGazeRadius()
+  window.addEventListener('resize', refreshGazeRadius)
+
+  function aimAt(cx, cy) { // 屏幕坐标 → 归一化注视向量（头部锚点平移保证「鼠标指头=直视」）
+    if (!model) return
+    try {
+      const h = model.toGlobal(new PIXI.Point(headAnchor.x, headAnchor.y))
+      // 相对头部锚点的偏移就是注视量（原来减两次画布中心导致上下颠倒，已修）
+      const dx = cx - h.x
+      const dy = cy - h.y // 屏幕 y 向下
+      const d = Math.hypot(dx, dy)
+      if (d < 1) { gaze.x = 0; gaze.y = 0; return }
+      // 径向归一：方向由单位向量给出，**幅度由距离给出**——鼠标离她越远转得越多，
+      // 到参考半径封顶。0.7 次幂让近处也留一点响应（纯线性时贴脸的距离变化太小、像没在跟）。
+      const t = Math.pow(Math.min(1, d / GAZE_RADIUS), 0.7)
+      gaze.x = (dx / d) * t
+      gaze.y = (-dy / d) * t // 屏幕 y 向下 → 鼠标偏上=抬头为正
+    } catch {}
+  }
+  window.__aimAt = aimAt
+  // 直接覆盖而不是取最大值：归位窗口现在按「这句说了多久」动态算，
+  // 下一句更短时必须能把它缩短，否则会出现「身子松了、头还端着」。
+  function holdGaze(ms = 10000) { gazeHoldUntil = Date.now() + ms }
+  function releaseGaze() { gazeHoldUntil = 0 }
+  window.__holdGaze = holdGaze
+  window.__gazeState = () => JSON.stringify({ gaze, gazeWeight: +gazeWeight.toFixed(3), holdLeft: Math.max(0, gazeHoldUntil - Date.now()) })
+  function updateGaze(dt) {
+    const held = Date.now() < gazeHoldUntil
+    // 2026-11-06：原来演出期把注视**完全**掐到 0（tw=0），于是说话那几秒她的头一动不动，
+    // 只剩 idle 那 2° 底噪——这是「不灵动」的另一半原因。改成留 35%：
+    // 她仍然看着你、跟着鼠标位置微调，只是不再大幅转头去抢戏。
+    const tw = held ? 0.35 : 1
+    gazeWeight += (tw - gazeWeight) * (1 - Math.exp(-dt / (tw ? 0.35 : 0.12)))
+    const tx = gaze.x * gazeWeight, ty = gaze.y * gazeWeight
+    lookX += (tx - lookX) * (1 - Math.exp(-dt / 0.09))
+    lookY += (ty - lookY) * (1 - Math.exp(-dt / 0.09))
+    headGazeX += (tx - headGazeX) * (1 - Math.exp(-dt / 0.32))
+    headGazeY += (ty - headGazeY) * (1 - Math.exp(-dt / 0.32))
+  }
+
+  // ---------- 模型加载 ----------
+  ;(async () => {
+    try {
+      loadClips() // 动作库与模型并行加载：模型就绪那一刻她就已经会做这 15 个动作了
+      model = await PIXI.live2d.Live2DModel.from(MODEL_URL)
+      app.stage.addChild(model)
+      window.__model = model // 调试句柄
+      // 遮罩缓冲区：库默认 256 太小（见文件顶部 CLIP_MASK_SIZE 的注释）。
+      // ⚠ 这个 API 只重建 clippingManager、**不重绑 GL**，所以必须补一次 startUp(gl)；
+      // 少了这一步遮罩纹理建不出来，整个模型会画不出来且不报错（实测：画面全空，日志正常）。
+      // 失败就保持默认 256 —— 难看但能跑，绝不因为这一行把桌宠搞黑。
+      try {
+        const rdr = model.internalModel.renderer
+        rdr.setClippingMaskBufferSize(CLIP_MASK_SIZE)
+        rdr.startUp(app.renderer.gl)
+        window.__setClipMask = (n) => {
+          rdr.setClippingMaskBufferSize(Number(n) || 256)
+          rdr.startUp(app.renderer.gl)
+          return rdr.getClippingMaskBufferSize()
+        }
+        P && P.log && P.log('遮罩缓冲区已设为 ' + rdr.getClippingMaskBufferSize())
+      } catch (e) { P && P.log && P.log('遮罩缓冲区设置失败（保持默认 256）：' + (e && e.message)) }
+      layout()
+      const cm = model.internalModel.coreModel
+
+      // ---------- 补上库里缺失的两件事：混合模式调用 / multiplyColor + screenColor 颜色混合 ----------
+      // ① 混合模式：pixi-live2d-display 0.4.0 的 setupShaderProgram 把
+      //    SRC_COLOR / DST_COLOR / SRC_ALPHA / DST_ALPHA 四个因子都算好了，却**从头到尾没有
+      //    一次 gl.blendFuncSeparate 把它们用出去**（grep 全文件：这些变量赋值后即弃）。
+      //    Normal / Additive / Multiplicative 三种混合全退化成普通 alpha 叠加；
+      //    本模型 715 个 drawable 里 75 层乘算、9 层加算，全都画错。
+      // ② 颜色混合：Cubism 4.2 起每个 drawable 自带一对颜色，着色器本该算
+      //        out.rgb = tex.rgb * multiplyColor + screenColor * alpha
+      //    库里压根没实现（片元着色器只有 texture * u_baseColor）。
+      //    画师常用「纯黑 alpha 遮罩 + screenColor 还原颜色」做柔和阴影，这类层
+      //    multiplyColor=(0,0,0) 就会算成 0 → 露出黑底。脸上那个黑方块正是它：
+      //    鼻子 ArtMesh246 / ArtMesh682（drawable 513 / 514）的贴图
+      //    (3466,2249)-(3616,2783) 是纯黑 alpha 遮罩，颜色 100% 来自
+      //    screenColor=(1,0.965,0.961)。同样中招的还有 Part45 的两圈「渐变圆」
+      //    （ArtMesh341 脖子 / ArtMesh342 身体）—— 它们本来就该是柔和阴影，不是黑圈。
+      //    全模型 715 层里只有 21 层不是单位色（其余 multiply=(1,1,1)、screen=(0,0,0)），
+      //    所以补上这一步对其它图层零影响。
+      // 画遮罩的那一遍必须跳过：那一路的混合与着色器由库自己管，动了会让整脸 clipping 失效。
+      try {
+        const Shader = PIXI.live2d && PIXI.live2d.CubismShader_WebGL
+        if (Shader) {
+          const SP = Shader.prototype
+          const glc = app.renderer.gl
+
+          // 记录当前 program，省掉每帧几百次 gl.getParameter(gl.CURRENT_PROGRAM) 的同步查询
+          if (!glc.__progTracked) {
+            const origUse = glc.useProgram.bind(glc)
+            glc.useProgram = function (prog) { glc.__curProg = prog; return origUse(prog) }
+            glc.__progTracked = true
+          }
+
+          // ① 往片元着色器里插颜色混合（必须在乘 clipping maskVal 之前做）
+          if (!SP.__colorBlendFixed) {
+            const origLoad = SP.loadShaderProgram
+            const mix = (v) => '\n  ' + v + '.rgb = ' + v + '.rgb * uMultiplyColor + uScreenColor * ' + v + '.a;'
+            SP.loadShaderProgram = function (vs, fs) {
+              let src = fs
+              try {
+                if (typeof src === 'string' && src.indexOf('uMultiplyColor') < 0 && src.indexOf('u_baseColor') >= 0) {
+                  src = src.replace(
+                    'uniform vec4       u_baseColor;',
+                    'uniform vec4       u_baseColor;\nuniform vec3       uMultiplyColor;\nuniform vec3       uScreenColor;'
+                  )
+                  // 无遮罩版
+                  src = src.replace(
+                    'gl_FragColor = texture2D(s_texture0 , v_texCoord) * u_baseColor;',
+                    'gl_FragColor = texture2D(s_texture0 , v_texCoord) * u_baseColor;' + mix('gl_FragColor')
+                  )
+                  // 有遮罩版（正 / 反两套都走这句声明）
+                  src = src.replace(
+                    'vec4 col_formask = texture2D(s_texture0 , v_texCoord) * u_baseColor;',
+                    'vec4 col_formask = texture2D(s_texture0 , v_texCoord) * u_baseColor;' + mix('col_formask')
+                  )
+                }
+              } catch (e) { window.__cbErr = String(e) }
+              return origLoad.call(this, vs, src)
+            }
+            SP.__colorBlendFixed = true
+          }
+
+          // ② 混合模式调用 + 按 drawable 传 multiply / screen 颜色
+          if (!SP.__blendFixed) {
+            // 顶点坐标数组是堆视图，同一个 drawable 跨帧是同一个对象 → 可用它反查 drawable 序号
+            const vpIndex = new WeakMap()
+            const drawableOf = (arr) => {
+              if (!arr) return -1
+              let i = vpIndex.get(arr)
+              if (i !== undefined) return i
+              try {
+                const vps = cm._model.drawables.vertexPositions
+                for (let k = 0; k < vps.length; k++) vpIndex.set(vps[k], k)
+              } catch (e) {}
+              i = vpIndex.get(arr)
+              return i === undefined ? -1 : i
+            }
+            const locCache = new WeakMap()
+            const origSetup = SP.setupShaderProgram
+            SP.setupShaderProgram = function (...args) {
+              const ret = origSetup.apply(this, args)
+              try {
+                const r = args[0], gl = this.gl
+                if (!gl) return ret
+                let maskPass = false
+                try { maskPass = !!(r && r.getClippingContextBufferForMask && r.getClippingContextBufferForMask()) } catch (e) {}
+                if (maskPass) return ret
+
+                const mode = args[8]     // setupShaderProgram(renderer, texId, ..., opacity, colorBlendMode, ...)
+                if (mode === 2) {        // Multiplicative：dst = dst*src + dst*(1-srcA)
+                  gl.blendFuncSeparate(gl.DST_COLOR, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE)
+                } else if (mode === 1) { // Additive
+                  gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ZERO, gl.ONE)
+                } else {                 // Normal
+                  gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+                }
+
+                const prog = gl.__curProg || gl.getParameter(gl.CURRENT_PROGRAM)
+                if (prog) {
+                  let L = locCache.get(prog)
+                  if (L === undefined) {
+                    L = { m: gl.getUniformLocation(prog, 'uMultiplyColor'), s: gl.getUniformLocation(prog, 'uScreenColor') }
+                    locCache.set(prog, L)
+                  }
+                  if (L.m || L.s) {
+                    const d = cm._model.drawables
+                    const idx = drawableOf(args[3])
+                    const ok = idx >= 0 && d.multiplyColors && d.screenColors
+                    const k = ok ? idx * 4 : 0
+                    if (L.m) gl.uniform3f(L.m, ok ? d.multiplyColors[k] : 1, ok ? d.multiplyColors[k + 1] : 1, ok ? d.multiplyColors[k + 2] : 1)
+                    if (L.s) gl.uniform3f(L.s, ok ? d.screenColors[k] : 0, ok ? d.screenColors[k + 1] : 0, ok ? d.screenColors[k + 2] : 0)
+                  }
+                }
+              } catch (e) { window.__cbErr = String(e) }
+              return ret
+            }
+            SP.__blendFixed = true
+          }
+
+          // 库在 startUp 时就把着色器编译好了，改了源码必须重编一次
+          // （releaseShaderProgram / generateShaders 属于 CubismShader_WebGL 单例，不在 renderer 上）
+          try {
+            const shaderInst = Shader.getInstance()
+            shaderInst.releaseShaderProgram()
+            shaderInst.generateShaders()
+            P && P.log && P.log('已补上混合模式调用 + multiplyColor/screenColor 颜色混合')
+          } catch (e) { P && P.log && P.log('着色器重编失败：' + (e && e.message)) }
+        }
+      } catch (e) { P && P.log && P.log('着色器补丁失败：' + (e && e.message)) }
+
+      // ---------- 关掉 Part45 的两圈「渐变圆」（ArtMesh341 脖子 / ArtMesh342 身体） ----------
+      // 混合模式和颜色混合都修好后，它们已经是正确的柔和阴影（不是黑圈了），
+      // 但先生看过仍觉得碍眼，2026-11-07 04:30 决定还是关掉。
+      // 用 opacity 归零，不动模型参数；想开回来：window.__ringOn = true
+      try {
+        const ringIds = Array.from(cm._model.drawables.ids).map(String)
+        const ringIdx = ['ArtMesh341', 'ArtMesh342'].map((n) => ringIds.indexOf(n)).filter((i) => i >= 0)
+        if (ringIdx.length) {
+          const origUpdate = cm.update.bind(cm)
+          cm.update = function (...a) {
+            const r = origUpdate(...a)
+            try {
+              if (!window.__ringOn) {
+                const ops = cm._model.drawables.opacities
+                for (const i of ringIdx) ops[i] = 0
+              }
+            } catch (e) {}
+            return r
+          }
+          P && P.log && P.log('已关闭渐变圆两层（drawable ' + ringIdx.join(' / ') + '）')
+        }
+      } catch (e) { P && P.log && P.log('关闭渐变圆失败：' + (e && e.message)) }
+      // 关掉库自带的注视：它写 ParamAngle（物理输出端）会被物理覆盖，且不带动物理件。
+      // 注视改由 updateGaze() 算出、走物理输入 AngleX/AngleY（见文件头部的注视驱动段）。
+      try { model.internalModel.updateFocus = () => {} } catch {}
+      // 物理前注入：把姿势 + 注视写到物理「输入」通道，物理据此算出 ParamAngle* 并联动
+      // 头发 / 帽子 / 蝴蝶结 / 耳环 / 呆毛。注入点必须在 physics.evaluate 之前，否则
+      // 写进去的值当帧就被物理重算覆盖（实测：物理后写 AngleX 完全无效）。
+      try {
+        const ph = model.internalModel.physics
+        if (ph && typeof ph.evaluate === 'function') {
+          const origPhysics = ph.evaluate
+          ph.evaluate = function (...args) {
+            try {
+              for (const k of DRIVE_KEYS) {
+                const v = drive[k]
+                if (v) cm.setParameterValueById(k, (cm.getParameterValueById(k) || 0) + v)
+              }
+            } catch {}
+            return origPhysics.apply(this, args)
+          }
+          window.__physicsInjected = true
+        }
+      } catch {}
+      // 口型 + 非物理类姿势参数 + 眼球：beforeModelUpdate 在动作/表情刷新之后、上屏之前
+      window.__forceMouth = null   // 调试钩子：强制 ParamMouthOpenY 开度
+      window.__forceParams = null  // 调试钩子：{参数Id: 值} 批量注入
+      model.internalModel.on('beforeModelUpdate', () => {
+        try {
+          // 姿势参数：物理输入类已在 physics 前处理，这里只补非物理的（眼球/表情类/开关部件）
+          const abs = (POSTURES[postureName] || {}).abs || []
+          for (const [k, v] of Object.entries(postureCur)) {
+            if (!v || DRIVE_KEYS.includes(k)) continue
+            if (abs.includes(k)) cm.setParameterValueById(k, v)
+            else cm.setParameterValueById(k, (cm.getParameterValueById(k) || 0) + v)
+          }
+          // 眼球跟随（不是物理参数，可直接写）
+          if (!window.__forceParams) {
+            // 思考时眼球改由 THINK 接管（在斜上方不规则漂移，像在脑内翻找），
+            // 和指针做权重混合而不是相加——两者都是满幅量，相加会顶出眼眶。
+            const ew = THINK.w
+            cm.setParameterValueById('ParamEyeBallX', lookX * 0.65 * (1 - ew) + THINK.exCur * ew)
+            cm.setParameterValueById('ParamEyeBallY', lookY * 0.5 * (1 - ew) + THINK.eyCur * ew)
+            if (ew > 0.01) {
+              // 眯眼 + 眉头微垂：这两笔是「琢磨」语义的来源（实测 combo 探针里占一半功劳）。
+              // 乘性压开合度而不是直接写死，眨眼动作仍叠在其上，不会变呆滞。
+              const ek = 1 - 0.32 * ew
+              cm.setParameterValueById('ParamEyeLOpen', (cm.getParameterValueById('ParamEyeLOpen') || 0) * ek)
+              cm.setParameterValueById('ParamEyeROpen', (cm.getParameterValueById('ParamEyeROpen') || 0) * ek)
+              cm.setParameterValueById('ParamBrowLY', (cm.getParameterValueById('ParamBrowLY') || 0) - 0.28 * ew)
+              cm.setParameterValueById('ParamBrowRY', (cm.getParameterValueById('ParamBrowRY') || 0) - 0.28 * ew)
+            }
+          }
+          // 说话层眉毛：人说话时眉毛在「打标点」——重音抬、句尾落。这一笔很便宜但很有效，
+          // 因为脸上的信息量比身体大一个量级。幅度只给 0.15~0.3（满幅 1），多了就成了惊讶脸。
+          if (SPEECH.w > 0.02) {
+            const bw = (SPEECH.level * 0.17 + SPEECH.onset * 0.06) * SPEECH.w
+            cm.setParameterValueById('ParamBrowLY', (cm.getParameterValueById('ParamBrowLY') || 0) + bw)
+            cm.setParameterValueById('ParamBrowRY', (cm.getParameterValueById('ParamBrowRY') || 0) + bw)
+          }
+          // 随机微动作：兽耳抖一下。写在这里（物理已算完、上屏之前）才能盖住物理输出，
+          // 所以能强行把耳朵拉起来再让它自己弹回去。
+          if (Math.abs(MICRO.ear) > 0.008) {
+            const ev = Math.max(-0.55, Math.min(1, MICRO.ear * MICRO.scale))
+            for (const k of EAR_PARAMS) cm.setParameterValueById(k, (cm.getParameterValueById(k) || 0) + ev)
+          }
+          // 动作层的非物理参数（手臂 / 胸腔 / 手指 / 肩…）：直接覆盖写。
+          // 它们多数是物理输出或纯形变参数，必须在物理算完之后写才盖得住。
+          for (const ck in clipParam) {
+            try {
+              const fw = faceParamW[ck]
+              if (fw == null) cm.setParameterValueById(ck, clipParam[ck])
+              else {
+                // 神情层：在「她本来的值」和目标值之间按权重取中间。
+                // 原值这一刻已经含了眨眼/说话层/物理的输出，所以 blend 天然带着「叠加感」，
+                // 退场时也是从这张脸平滑回到她原来的脸，不会啪地跳到默认值。
+                const base = cm.getParameterValueById(ck) || 0
+                cm.setParameterValueById(ck, base + (clipParam[ck] - base) * (fw >= 1 ? 1 : fw))
+              }
+            } catch {}
+          }
+          // 动作层的叠加通道（表情/眉毛/耳朵）：只在原值上加偏移，
+          // 这样动作期间她照样会眨眼、照样有口型，不会变成一张塑料脸。
+          // 例外：ParamMouthOpenY 不在这里写 —— 下面口型那一行会按「谁张得更大」合并，
+          // 否则动作要张的嘴每帧都被语音口型（静音时=0）覆盖掉，打哈欠张不开口。
+          for (const ck in clipParamAdd) {
+            if (ck === 'ParamMouthOpenY') continue
+            try { cm.setParameterValueById(ck, (cm.getParameterValueById(ck) || 0) + clipParamAdd[ck]) } catch {}
+          }
+          // 常驻外观（换装/道具）：垫在最底下当基底，调试注入仍可临时盖住。
+          // 动作库 31 个动作一个都没碰这些参数（2026-11-06 核对），所以不会和动作抢。
+          applyLook(cm)
+          if (window.__forceParams) {
+            for (const [k, v] of Object.entries(window.__forceParams)) cm.setParameterValueById(k, v)
+          } else {
+            const mv = window.__forceMouth != null ? window.__forceMouth : mouthOpen
+            // 动作层只允许「把嘴张得更大」，不允许替她闭嘴 —— 和参考实现同一套取舍：
+            // 一个正在打哈欠/叹气的嘴，不该被语音口型在字与字之间关回 0。
+            const add = Math.max(0, clipParamAdd.ParamMouthOpenY || 0)
+            cm.setParameterValueById('ParamMouthOpenY', Math.min(1, mv + add))
+          }
+        } catch {}
+      })
+      // 待机动作
+      try { await model.internalModel.motionManager.startMotion('Motion', 0, 3) } catch {}
+      // 排查用：慢一拍注册，读到的就是「即将上屏」的最终值（物理算完 + 动作层写完 + 口型写完）
+      window.__lastParams = {}
+      model.internalModel.on('beforeModelUpdate', () => {
+        try {
+          const p = window.__lastParams
+          p.ParamAngleY = +cm.getParameterValueById('ParamAngleY').toFixed(2)
+          p.ParamAngleX = +cm.getParameterValueById('ParamAngleX').toFixed(2)
+          p.ParamAngleZ = +cm.getParameterValueById('ParamAngleZ').toFixed(2)
+          p.ParamBodyAngleX = +cm.getParameterValueById('ParamBodyAngleX').toFixed(2)
+        } catch {}
+      })
+      scheduleMicro() // 启动随机微动作调度（6~17 秒一次，演出时自动让路）
+      P && P.log('模型就绪')
+      setInterval(() => { // 没有语音时口型自然闭合
+        if (!playing) mouthTarget = 0
+      }, 200)
+    } catch (e) {
+      P && P.log('模型加载失败：', e.message)
+      showBubble('桌宠模型或 Live2D Core 未就绪，请在迈从大肥鱼的 Live2D 页面检查模型与 Core 路径，然后重新启动桌宠。', '需要设置', 86400)
+    }
+  })()
+
+  // ---------- 口型平滑（快开慢合，说话更像） ----------
+  app.ticker.add(() => {
+    const k = mouthTarget > mouthOpen ? 0.55 : 0.18
+    mouthOpen += (mouthTarget - mouthOpen) * k
+  })
+
+  // ---------- 音频管线：Uint8Array → decodeAudioData → analyser → 音量 → 口型 ----------
+  function ensureAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {})
+    return audioCtx
+  }
+  let voiceSrc = null   // 正在播的那个 source（stopVoice 要真停它，否则多句会叠成回音）
+  let voiceSeq = 0      // 播放序号：只有最新一句允许出声，被顶掉的直接丢弃
+  function decodeVoice(bytes) {
+    const data = bytes instanceof ArrayBuffer ? bytes.slice(0)
+      : bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+    return ensureAudio().decodeAudioData(data)
+  }
+  let decodingWatch = false
+  async function playVoice(bytes, speech) {
+    decodingWatch=!!speech?.watchVersion
+    const watchVersion=speech?.watchVersion
+    const seq = ++voiceSeq
+    const ctx = ensureAudio()
+    await window.petAudioDevices.routeOutput(ctx)
+    const buf = await decodeVoice(bytes)
+    if (ctx.state === 'suspended') await ctx.resume()
+    if (seq !== voiceSeq) { P.reportPlayback?.({speechId:speech?.speechId,event:'cancel'}); return null } // late decode cannot replace a newer voice
+    stopVoice()
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+    analyser = ctx.createAnalyser()
+    analyser.fftSize = 512
+    src.connect(analyser)
+    analyser.connect(ctx.destination)
+    src.onended = () => { if (voiceSrc === src) { P.reportPlayback?.({speechId:src.speechId,watchVersion:src.watchVersion,watchRequestId:src.watchRequestId,event:'end'}); voiceSrc = null; playing = false; mouthTarget = 0 } }
+    voiceSrc = src
+    const started = ctx.currentTime
+    src.watchVersion=watchVersion;src.watchRequestId=speech?.watchRequestId
+    src.speechId = speech?.speechId
+    try { src.start(started) } catch(error) { if(voiceSrc===src)voiceSrc=null;src.disconnect();throw error }
+    P.reportPlayback?.({speechId:src.speechId,watchVersion:src.watchVersion,watchRequestId:src.watchRequestId,phoneOwner:speech?.phoneOwner,event:'start',startedAt:Date.now(),text:speech?.text,audioMs:buf.duration*1000})
+    playing = true
+    const data = new Uint8Array(analyser.fftSize)
+    const tick = () => {
+      if (!playing || !analyser || voiceSrc !== src) return
+      analyser.getByteTimeDomainData(data)
+      let sum = 0
+      for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v }
+      const rms = Math.sqrt(sum / data.length)
+      // 归一化音量：口型用「开度曲线」，说话层用「原始能量」——两者要的映射不一样：
+      // 口型要忽略底噪（-0.01 死区）、放大到 0..1 好驱动张嘴；说话层要保留强弱对比，
+      // 所以给一条更线性、上限更低的曲线（0.32 就到顶），重音和轻声才分得出来。
+      speechRaw = Math.min(1, Math.max(0, (rms - 0.005) * 3.1))
+      mouthTarget = Math.min(1, Math.max(0, (rms - 0.01) * 5.5))
+      requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+    return { durationMs: buf.duration * 1000, elapsedMs: () => (ctx.currentTime - started) * 1000 }
+  }
+  function stopVoice() {
+    playing = false; mouthTarget = 0
+    if (voiceSrc) { P.reportPlayback?.({speechId:voiceSrc.speechId,watchVersion:voiceSrc.watchVersion,watchRequestId:voiceSrc.watchRequestId,event:'cancel'}); try { voiceSrc.stop() } catch {} ; voiceSrc = null }
+  }
+  // 电话（第 3 期）用的两个口子：判断我是不是正在出声、被插话时立刻闭嘴。
+  // 停的时候顺手把 voiceSeq 推进一格 —— 正在解码的那段也一起作废，
+  // 否则「掐了」之后还有一句漏出来，插话就白插了。
+  window.petAudio = {
+    cancelWatch: () => { if(voiceSrc?.watchVersion || decodingWatch){voiceSeq++;decodingWatch=false;clearBeats();stopVoice()} },
+    playing: () => playing,
+    stop: () => { voiceSeq++; clearBeats(); stopVoice() },
+  }
+
+  // ---------- 气泡 ----------
+  let bubbleTimer = null
+  function showBubble(text, tag, secs) {
+    bubbleText.textContent = String(text || '')
+    bubbleTag.textContent = String(tag || '主动来找你')
+    bubble.classList.add('show')
+    clearTimeout(bubbleTimer)
+    bubbleTimer = setTimeout(hideBubble, Math.max(6500, (secs || 8) * 1000))
+  }
+  function hideBubble() { bubble.classList.remove('show') }
+
+  // ---------- 身体演出：anim =「动作,表情,姿势」三段式（M3；DSH live2d 模块经 <body:标签> 下发） ----------
+  const MOTION_INDEX = { 举手: 7, 收手: 1, 掏狗尾草: 3, 收狗尾草: 2, 竖手指: 4, 收手指: 5, 脱鞋: 6, 待机: 0 }
+  // 姿势词汇表：参数分两路——
+  //   drive：物理「输入」通道（AngleX/AngleY/AngleZ/PositionX/Y/Z/LeanInput），
+  //          物理据此算出 ParamAngle* 并联动头发、帽子、蝴蝶结、耳环、呆毛（整组一起动）
+  //   params：其它参数（表情类 / 开关部件），物理前写会被覆盖，所以放到 beforeModelUpdate 补
+  const POSTURES = {
+    '歪头': { drive: { AngleZ: 22 }, params: { EyeSmile: 0.7 } },        // 歪头杀：头一歪 + 眯眯笑眼
+    '抬头': { drive: { AngleY: 14 } },                                   // 仰头（得意/望天）
+    '低头': { drive: { AngleY: -14 } },                                  // 垂头（害羞/沮丧）
+    '转头': { drive: { AngleX: 20 } },                                   // 侧过脸去看别处
+    '侧倾': { drive: { PositionX: 9, AngleZ: 4 } },                      // 整个身子往一边靠
+    // 注意 LeanInput 的符号（2026-11-06 截图实测）：负 = 前倾凑近（整个上身朝镜头压过来、
+    // 画面放大、肩膀被裁），正 = 往后撤（露出腰裙、人物变小）。早期注释写成「正=前倾」是错的，
+    // 导致指针在上方时反而低头弯腰。
+    '后仰': { drive: { LeanInput: 16, AngleY: 5 } },                     // 往后靠（放松/摊着）
+    '前探': { drive: { LeanInput: -16, AngleY: -5 } },                   // 凑近看一眼（好奇/关切）
+    '挺胸': { drive: { LeanInput: 9, AngleY: 10 }, params: { ParamEyeLOpen: 1.2, BrowInnerUp: 0.6 } },
+    '抚胸': { params: { Movement2: 1 }, abs: ['Movement2'] },            // 手抚胸口（物理输入件，可直接写）
+    '自然': {},                                                          // 收掉姿势，回正
+  }
+  let postureName = '自然'
+  let postureCur = {}   // 当前生效值（每帧向目标平滑靠拢）
+  let postureTgt = {}   // 目标值
+  function setPosture(name) {
+    const p = POSTURES[name]
+    if (!p) return false
+    postureName = name
+    postureTgt = { ...(p.drive || {}), ...(p.params || {}) }
+    for (const k of Object.keys(postureCur)) if (!(k in postureTgt)) postureTgt[k] = 0 // 旧参数平滑收回
+    return true
+  }
+  window.__setPosture = setPosture // 调试钩子
+  window.__postureState = () => JSON.stringify({ name: postureName, cur: postureCur, tgt: postureTgt })
+  window.__postures = Object.keys(POSTURES)
+  app.ticker.add(() => {
+    // 帧率无关的平滑：1-exp(-dt/τ)。原来固定系数 0.14 在 144Hz 下会 4 倍速窜过去，
+    // 掉帧时又变慢——换成时间常数后任何刷新率手感一致。
+    const dt = Math.min(0.1, app.ticker.deltaMS / 1000)
+    updateGaze(dt) // 眼球(快) + 头部(慢) 注视平滑，含演出期的权重淡出
+    const k = 1 - Math.exp(-dt / 0.12) // τ≈0.12s ≈ 原 60Hz 下 0.5 秒摆到位的观感
+    const keys = new Set([...Object.keys(postureCur), ...Object.keys(postureTgt)])
+    for (const key of keys) {
+      const c = postureCur[key] || 0, t = postureTgt[key] || 0
+      postureCur[key] = c + (t - c) * k
+      if (Math.abs(postureCur[key]) < 0.002) delete postureCur[key]
+    }
+    // 合成物理输入：待机微摆 + 姿势 + 指针跟随。
+    // 幅度参考 petbox 给鲸语打的 pointer 阶段（AngleX 18 / AngleY 12 / LeanInput 26 / PositionX 4）：
+    // 不只是头在动——指针偏下时 LeanInput 让上半身前探、偏侧时 PositionX 带着重心挪，
+    // 这才是「灵动」的那一半（抄自 HoppoChan0721/dsh-desktop-petbox 的 apply-jingyu.mjs）。
+    updateIdle(dt) // 待机微摆常驻做底噪，姿势和指针都叠在它上面，静止时也有生气
+    stepMicro(dt)  // 随机微动作的弹簧（耳朵抖/轻晃/一沉）
+    updateThink(dt) // 思考态权重与眼球漂移
+    updateSpeech(dt) // 说话层权重与音量包络（语音在播时接管，说完自己退回 idle）
+    updateClips(dt)  // 动作层：采样所有在播动作的轨道，汇总成本帧的 clipDrive / clipParam
+    // 动作取景：抬手的动作期间镜头自动退开，播完推回。
+    // 退多少跟「手臂抬多高」成正比，不是一个二值开关 —— 原来只看 gestureZoom>0 就猛退到 4600，
+    // 结果「手抬到一半」的动作（Param36 0.35~0.4）把画面拉成全身，手却还是看不清，纯亏一次跳变。
+    // 现在 0.3~0.7 之间线性过渡：刚抬手略退一点，真举高才退到全身。
+    // 注意：窄窗口下真正的取景由 layout 的 uByWidth 决定（已经能容下整幅内容），
+    // 这段只是在「窗口够宽、可以贴得近」时给手臂让位。
+    if (viewMode === 'bust') {
+      let gm = 0
+      for (const pl of clipPlayers) if (pl.gesture && pl.armMag > gm) gm = pl.armMag
+      // 0.2~0.45 映射到 0~1。原来写 0.3~0.7，摊手（Param36 只有 0.4 + 身体侧倾 11°）
+      // 只换算出 0.25 → 退 7.5%，右手掌整个落在画面外。它抬得不高，但横向张得开。
+      const kTarget = gm > 0.2 ? Math.min(1, (gm - 0.2) / 0.25) : 0
+      if (Math.abs(kTarget - gestureK) > 0.004) {
+        gestureK += (kTarget - gestureK) * (1 - Math.exp(-dt / 0.35)) // 0.35s 追上去，不硬切
+        layout()
+      } else if (gestureK !== kTarget) {
+        gestureK = kTarget; layout()
+      }
+    }
+    // 体型过渡：0.38s 追上去。观感是「她一边变小一边重新站位」，不是镜头硬切。
+    // 剩 0.01 以内直接归位 —— 指数平滑的尾巴会拖很久，而 0.01 只差 4px，肉眼看不出来。
+    if (bodyCur !== bodyLevel) {
+      bodyCur += (bodyLevel - bodyCur) * (1 - Math.exp(-dt / 0.38))
+      if (Math.abs(bodyLevel - bodyCur) < 0.01) bodyCur = bodyLevel
+      layout()
+    }
+    const tw = THINK.w
+    // 她在想事情时，指针跟随让位（但不清零：留 18%，她仍知道你在哪，只是心神不在这儿）
+    const gazeK = 1 - tw * 0.82
+    for (const key of DRIVE_KEYS) drive[key] = (postureCur[key] || 0) + IDLE[key]
+    drive.AngleX += headGazeX * 18 * gazeK  // 转头（物理链会带起头发/蝴蝶结/耳朵）
+    drive.AngleY += headGazeY * 12 * gazeK  // 俯仰
+    drive.AngleZ += headGazeX * 7 * gazeK   // 随指针方向微微侧倾，比纯转头立体
+    drive.LeanInput += headGazeY * 18 * gazeK // 指针在下方（gy<0）→ 负值 = 俯身前探看她手边的东西；
+                                            // 指针在上方（gy>0）→ 正值 = 上身微微后撤仰头去看
+    // 重心随指针侧移（常数 4，和下面那条「按头转比例」的链叠加，两者不是一回事：
+    // 这条是「人站着自然把重心挪过去」，链是「头转带动上身」）。
+    // 两处一起给，注视时的实际腰转 = 18*0.5 + 4 = 13（原来 0.35 那版是 10.3），大约多两成半。
+    drive.PositionX += headGazeX * 4 * gazeK
+    if (tw > 0) {
+      // 思考层。幅度是按实测定的（tkprobe）：只给 6~8° 时画面虽然动了 68% 却「读不出在想事」，
+      // 真正让语义成立的是**歪头 + 半眯眼**（combo 探针一眼就像在琢磨），摆动只是让它不死板。
+      // 所以这里是「基线姿态 + 缓慢漂移 + 肌肉微颤」三段相加，不是一个正弦。
+      const t = THINK.t
+      const live = (postureName === '自然' && currentMotion === '待机') ? 1 : 0.35 // 有演出时只留三成，别抢戏
+      const k = tw * live
+      drive.AngleZ += (12 + Math.sin(t * 0.31 + 0.6) * 2.4 + Math.sin(t * 1.12) * 0.55) * k // 歪头（想事情的主信号）
+      drive.AngleY += (9 + Math.sin(t * 0.24) * 1.7) * k                                   // 微微仰起
+      drive.AngleX += (8 + Math.sin(t * 0.17 + 1.1) * 3.4) * k                             // 侧过脸去，避开你专心
+      drive.PositionY += Math.sin(t * 0.43) * 0.9 * k
+      drive.LeanInput += -3.2 * k                                                          // 负=前倾：略凑近，像在琢磨
+    }
+    // 说话层：**叠在** idle 之上（不是替换），所以「一边说话一边自然摆动」同时成立。
+    // 幅度很克制（合计 3~5°），因为说话的主体信息量在嘴和眼神上，头只是把语气托出来；
+    // 一旦超过 6° 就从「在说话」变成「在演说话」，反而假。
+    const sw = SPEECH.w
+    if (sw > 0) {
+      const st = SPEECH.t
+      const run = SPEECH.level
+      // 俯仰：基础微微低头（看着你说）+ 重音点头。负 = 低头。最多 ≈3.5°
+      drive.AngleY += (-0.9 - SPEECH.onset * 0.85 - run * 0.55) * sw
+      // 侧倾：慢摆为主 + 一点快频（说话的"劲"），句读时慢摆还在，快频落下去
+      drive.AngleZ += (Math.sin(st * 0.62 + SPEECH.swayPhase) * 1.7 + Math.sin(st * 1.34) * 0.45) * sw
+      // 左右：极慢游移，像一边说一边在组织语言
+      drive.AngleX += Math.sin(st * 0.34 + 1.9) * 1.7 * sw
+      // 身体：说话时持续前倾一点（投入感），音量越大越往前凑
+      drive.LeanInput += (-2.4 - run * 1.5) * sw
+      drive.PositionY += (Math.sin(st * 0.81) * 0.7 - run * 0.45) * sw
+    }
+    drive.AngleZ += MICRO.tilt * MICRO.scale      // 随机微动作：上半身轻晃（物理带头发/耳朵扫一下）
+    drive.PositionY += MICRO.sink * MICRO.scale   // 随机微动作：身子一沉再弹回
+    // ---------- 转体链：头转到哪儿，腰跟着转一部分 ----------
+    // 这是模型作者自己调的映射。原厂 VTube 配置（大肥鱼.vtube.json 的 ParameterSettings）里有三条：
+    //   身体X: FaceAngleX → PositionX（±30 对 ±30，平滑 20ms）
+    //   身体Y: FaceAngleY → PositionY
+    //   身体Z: FaceAngleZ → PositionZ
+    // 也就是「转头 → 腰跟着转」，1:1 全量。这是这个模型有立体感的根本原因：
+    // PositionX 灌进物理，把 ParamBodyAngleX（实测 1:1，±30 → ±28°）、HipAngleX、
+    // ParamHipAngleZ、手和裙带全带起来 —— 头单独转、身子不动，才会像一块牌子在晃。
+    // 我们给 0.5 而不是 1.0：全量的话每次她看指针都要扭 30°，太主动；
+    // 一半是「整个身子朝你转过来一点」，肉眼一眼能看出来，又还没到殷勤跟着你的程度。
+    // 注意放在 clipDrive 之前 —— 动作自己写的 PositionX 是刻意的编排，不该再被头带一遍。
+    drive.PositionX += drive.AngleX * 0.5
+    drive.PositionZ += drive.AngleX * 0.17   // 转体时前后也偏一点（透视上的立体感），按 0.34 倍率跟着 X 走
+    // 动作层对物理输入的贡献。叠在最后但**低于**调试覆盖，这样探针脚本还能压住它。
+    for (const ck in clipDrive) if (ck in drive) drive[ck] += clipDrive[ck]
+    // 调试钩子：直接往物理输入上叠一段偏移。动作层（MOTION）就是靠这个口子接入的，
+    // 之所以放在 ticker 最末尾，是为了让它叠加在所有常驻层（idle/姿势/注视/思考/说话/微动作）之上，
+    // 方便单独观察某个关节通道的原始效果。
+    const dov = window.__driveOverride
+    if (dov) for (const k in dov) if (k in drive) drive[k] += Number(dov[k]) || 0
+  })
+  // ---------- 修饰符：让同一个动作长出几十种说法 ----------
+  // anim 第 4 段（可省略）编码「幅度|时长倍率|重复|方位」，例如「@0.5|1.7|3|L」= 幅度减半、慢 1.7 倍、做 3 次、镜像。
+  // 为什么用 | 而不是逗号：整串 anim 本身用逗号分段，段内再用逗号会被拆坏。
+  // 语义（模块侧解析，这里只负责照做）：
+  //   微/小 → 0.5/0.7 幅度   大/狠 → 1.4/1.6
+  //   快 → 0.65 时长          慢 → 1.7 时长
+  //   ×N → 重复 N 次           :左 → 镜像（左右互换）
+  function parseMods(seg) {
+    const out = { amp: 0, speed: 0, repeat: 1, mirror: false }
+    if (!seg || seg[0] !== '@') return out
+    const f = seg.slice(1).split('|')
+    const amp = Number(f[0]), speed = Number(f[1]), rep = Number(f[2])
+    if (amp > 0.1 && amp < 3) out.amp = amp         // 0 = 未指定（交给随机抖动）
+    if (speed > 0.2 && speed < 4) out.speed = speed
+    if (rep >= 1) out.repeat = Math.min(5, rep)
+    if (String(f[3] || '').toUpperCase() === 'L') out.mirror = true
+    return out
+  }
+  // 表情位（anim 第 2 段、句中 bt.expr）统一走这里：
+  // 先看神情库，再看模型自带的 exp3。两边的名字本来就有重叠（脸红/＞＜/黑脸/爱心眼…），
+  // 神情库那份多了「挂多久、怎么退」，所以库里有就走库；库里没有的（兔牙/钢盆/眼镜/换装…）
+  // 还是裸 expression —— 那些本来就是常驻外观，不该自己退。
+  function poseFace(name, holdSec) {
+    if (!name) return false
+    let any = false
+    // 同一个表情位可以塞好几条，用 + 连（不能用逗号 —— 那是 anim 的段分隔符）。
+    // 例：'挑眉+嘟嘴' = 眉眼一条通道、嘴一条通道，两条同时挂着；
+    // 写两个同通道的（'嘟嘴+抿嘴'）后一个盖掉前一个，这是通道规则，不是丢词。
+    for (const nm of String(name).split('+').map((s) => s.trim()).filter(Boolean)) {
+      if (FACES[nm]) { any = holdFace(nm, { hold: holdSec }) || any; continue }
+      try { model && model.expression(nm); any = true } catch (e) { P && P.log('表情切换失败：' + nm + ' / ' + e.message) }
+    }
+    return any
+  }
+  async function applyBody(anim, faceHoldMs, speechMs, current = () => true) {
+    if (!model || !anim) return
+    const parts = String(anim).split(/[,，]/).map((s) => s.trim())
+    const mods = parseMods(parts[3])
+    // 优先认「动作库」：库里的动作是多轨道的，比原生一次性动作丰富得多。
+    // 库里没有才回落到原生 8 动作（举手/掏狗尾草/竖手指…）。
+    if (parts[0] && CLIPS[parts[0]]) {
+      const ok = playClip(parts[0], {
+        mirror: mods.mirror || parts[0].endsWith('左'),
+        amp: mods.amp || 0, ...fitClipToSpeech(CLIPS[parts[0]], speechMs, mods.repeat, mods.speed), current,
+      })
+      if (ok) {
+        const m = [mods.amp ? '幅度×' + mods.amp : '', mods.speed ? '时长×' + mods.speed : '',
+          mods.repeat > 1 ? '×' + mods.repeat : '', mods.mirror ? '镜像' : ''].filter(Boolean).join(' ')
+        P && P.log('演出动作库动作：' + parts[0] + (m ? '（' + m + '）' : ''))
+      }
+    } else if (MOTION_INDEX[parts[0]] != null) {
+      // 原生一次性动作没有幅度/时长参数可调，只能重复：×N 就按它的时长连播 N 次。
+      const n = Math.max(1, mods.repeat)
+      for (let i = 0; i < n; i++) {
+        if (!current()) return
+        try { await model.internalModel.motionManager.startMotion('Motion', MOTION_INDEX[parts[0]], 3) } catch (e) { P && P.log('动作播放失败：', e.message); break }
+        currentMotion = parts[0]
+        if (i < n - 1) await new Promise((r) => setTimeout(r, 900)) // 动作本身约 0.9s，等它跑完再叠下一次
+      }
+    } else if (FACES[parts[0]]) {
+      // 兜底：她把神情名写在了「动作」位上（<body:眯眼笑>）也不至于什么都不做。
+      // 模块那边 parseBody 已经把这种写法归到表情位了，这里只是防止某条老链路漏转。
+      poseFace(parts[0], 2.8)
+    }
+    if (parts[1]) {
+      if (!setLookByTag(parts[1])) { // 钢盆/眼镜/裙子/尾巴 走常驻外观通道，其余照旧当表情
+        // 神情挂多久：跟着这条动作的长度走，再多留一会儿让她「笑完才收」；
+        // 纯神情（没动作）时给 2.6 秒起步，不能一挂上就闪没了。
+        // faceHoldMs 是整句语音的时长 —— 每句都挂一张脸之后，脸必须撑到这句话说完，
+        // 否则说到一半脸就淡回原来的样子（短句看不出，长句特别明显）。
+        const dur = (parts[0] && CLIPS[parts[0]]) ? CLIPS[parts[0]].dur : 0
+        poseFace(parts[1], Math.max(2.6, dur + 1.2, (Number(faceHoldMs) || 0) / 1000))
+      }
+    }
+    if (parts[2]) {
+      if (!setPosture(parts[2])) P && P.log('不认识的姿势「' + parts[2] + '」，忽略')
+    }
+    // 这里**不再**排归位计时：applyBody 是 async（里面 await startMotion），
+    // 它内部排的定时器会后于调用方执行，把「按语音长度算好的窗口」覆盖成默认值。
+    // 归位窗口统一由 handleSpeak 在拿到真实时长后安排。
+  }
+  window.__applyBody = applyBody   // 调试钩子：直接跑一条 anim 串（'动作,表情,姿势'）
+
+  // ---------- 句中标签：把动作铺到她这句话的时间轴上 ----------  // 模块只告诉这里「第几个字之后做什么动作」，时间由这里算 —— 因为只有这儿能拿到
+  // 这句语音的真实时长。语速是反推出来的：字数 ÷ 语音秒数。
+  // 实测中文 TTS 约 6 字/秒，但每句都不一样；用真实时长，动作落点才能跟她的语气对齐
+  // （她在句号处停顿，动作也正好停在那里，而不是按一个全局常数硬铺）。
+  //
+  // 动作节奏「跟后文」：一个动作该演多快，取决于它后面还有多少话 ——
+  // 后面还有很多字，就慢慢做完；后面马上收尾，就快一点。夹在 0.7~1.6，
+  // 再慢像卡住、再快像抽筋。她显式写了「快/慢」就听她的，不自动调。
+  let beatTimers = []
+  let beatSeq = 0            // 代际：新的一句进来，上一句排的定时器全部作废
+  function clearBeats() {
+    for (const t of beatTimers) clearTimeout(t)
+    beatTimers = []
+    beatSeq++
+  }
+  function animFrom(o) {
+    const m = [o.amp ? String(o.amp) : '', o.speed ? String(o.speed) : '',
+      o.repeat > 1 ? String(o.repeat) : '', o.mirror ? 'L' : '']
+    const tail = m.some(Boolean) ? '@' + m.join('|') : ''
+    const three = [o.motion || '', o.expr || '', o.posture || '']
+    return (tail ? [...three, tail] : three).join(',')
+  }
+  function fitClipToSpeech(clip, speechMs, repeat, explicit) {
+    const repeats = Math.max(1, Math.min(5, Math.round(repeat || 1)))
+    if (!speechMs) return { speed: explicit || 0, repeat: repeats }
+    const budget = speechMs / 1000 / clip.dur
+    const count = Math.max(1, Math.min(repeats, Math.floor(budget / 0.45)))
+    return { speed: Math.max(0.45, Math.min(explicit || 1.6, budget / count)), repeat: count }
+  }
+  // planMs / t0 只用于日志：计划什么时候动 vs 实际什么时候动。
+  // 这两个数对不上就是「话都说完了她还没动」的现场证据，排查时一眼能看出来。
+  function playBeat(bt, gapSec, planMs, t0, current) {
+    const late = planMs != null && t0 != null ? `（计划 ${planMs | 0}ms，实际 ${(performance.now() - t0) | 0}ms）` : ''
+    if (bt.expr) poseFace(bt.expr, 3.2)
+    if (bt.posture) setPosture(bt.posture)
+    if (!bt.name) return
+    if (CLIPS[bt.name]) {
+      const c = CLIPS[bt.name]
+      const fit = fitClipToSpeech(c, gapSec * 1000, bt.repeat, bt.speed)
+      playClip(bt.name, {
+        amp: bt.amp || 0, ...fit, mirror: !!bt.mirror, current,
+      })
+      P && P.log(`句中「${bt.raw}」→ ${bt.name}，时长 ${fit.speed.toFixed(2)}×（本体 ${c.dur}s）${late}`)
+    } else if (MOTION_INDEX[bt.name] != null) {
+      try { model.internalModel.motionManager.startMotion('Motion', MOTION_INDEX[bt.name], 3); currentMotion = bt.name } catch {}
+    }
+  }
+  async function applyScript(id, d, playback, my) {
+    const T0 = performance.now()
+    // 脚本是模块刚写的文件，偶尔会撞上「正在写」→ 读坏了就重试两次，别一句话白说
+    let j = null
+    let seen = ''
+    for (let k = 0; k < 3 && !j; k++) {
+      try {
+        // 优先读「每句一个」的 beat-<id>.json —— 按 id 分文件后，后一句不可能覆盖这一句；
+        // 读不到再退回老的共享 beat.json（兼容还没更新的模块）。
+        let g = null
+        const r = await fetch('/beat-' + encodeURIComponent(id) + '.json?t=' + Date.now(), { cache: 'no-store' })
+        if (r.ok) { try { g = await r.json() } catch {} }
+        if (!g || g.id !== id) {
+          const r2 = await fetch('/beat.json?t=' + Date.now(), { cache: 'no-store' })
+          if (r2.ok) { try { g = await r2.json() } catch {} }
+        }
+        seen = g && g.id ? String(g.id) : '(没有文件)'
+        if (g && g.id === id) j = g
+      } catch {}
+      if (!j) await new Promise((res) => setTimeout(res, 130))
+    }
+    // 报错要把「手里的 id」和「文件里的 id」都打出来：两者不一致说明脚本被别人覆盖了
+    // （曾经因为同一条回复被两条链路各解析一次、后一次把文件换成自己的 id，这一句就整段作废）
+    if (!j) { P && P.log(`时间轴脚本对不上：要 ${id}，文件是 ${seen}，这句只弹气泡`); return }
+    if (my !== beatSeq) return            // 等文件期间又来了新的一句：这句作废
+    const audio = await playback
+    const current = () => my === beatSeq
+    if (!current()) return
+    const chars = Math.max(1, Number(j.chars) || 1)
+    const totalMs = audio?.durationMs || estimateSpeechMs(d) || chars * 166
+    const elapsed = audio?.elapsedMs || (() => 0)
+    const remaining = totalMs - elapsed()
+    if (remaining <= 0) return
+    if (j.base) applyBody(animFrom(j.base), remaining + 700, remaining, current)
+    const msPerChar = totalMs / chars
+    const list = (j.beats || []).slice().sort((a, b) => a.ch - b.ch)
+    list.forEach((bt, i) => {
+      const at = Math.max(0, bt.ch * msPerChar)
+      const nextCh = i + 1 < list.length ? list[i + 1].ch : chars
+      const until = Math.min(totalMs, nextCh * msPerChar)
+      if (until <= Math.max(at, elapsed())) return
+      const t = setTimeout(() => {
+        const gapMs = until - Math.max(at, elapsed())
+        if (current() && gapMs > 0) playBeat(bt, gapMs / 1000, at, T0, current)
+      }, Math.max(0, at - elapsed()))
+      beatTimers.push(t)
+    })
+    P && P.log(`句中动作 ${list.length} 个，语速 ${(1000 / msPerChar).toFixed(1)} 字/秒（${audio ? '播放时钟' : '估算'}，总长 ${(totalMs / 1000).toFixed(2)}s）`)
+  }
+  window.__script = (id, d) => { clearBeats(); return applyScript(id, d || {}, Promise.resolve(null), beatSeq) }
+  window.__probeAudioMs = async bytes => (await decodeVoice(bytes)).duration * 1000
+
+  // ---------- 自动复位：没人陪着演下去，身体自己松下来（借鉴鲸语 returnToIdle 策略） ----------
+  // 2026-11-06 改：原来是固定 30 秒到点统一归位（姿势/动作/表情一起收），先生反馈「等太久、不自然，
+  // 说完话就该慢慢松了」。改成按「这句实际说了多久」来算窗口：
+  //   实测 pet 语音缓存 47 条（pet/voice/*.wav，实为 LAME 编码的 MP3）——中位 2.0s、平均 2.3s、最长 5.9s，
+  //   91% 在 4 秒以内。固定 30 秒等于说完还端着十几倍的时间，看着像卡在动作里。
+  // 现在 = 说话时长 + 3.5s 余韵，夹在 4.5~20 秒之间。每说一句都重算，聊天中途不会突然松手。
+  const RELAX_TAIL_MS = 3500   // 说完之后再「端着」多久：让最后一句的余韵落地，别像被掐断
+  const RELAX_MIN_MS = 4500    // 极短一句（"嗯""好"）也别刚开口就收
+  const RELAX_MAX_MS = 20000   // 万一来了超长语音，也别一直端着
+  // 没拿到音频时按文本估：中文 TTS 实测约 6 字/秒（160ms/字），比语音文件缺失时干等强。
+  function estimateSpeechMs(d) {
+    const n = Number(d && d.durationMs) || 0
+    if (n > 0) return n
+    const t = String((d && d.text) || '').replace(/<[^>]*>/g, '')
+    return Math.min(RELAX_MAX_MS, t.length * 160)
+  }
+  function relaxDelayFor(speechMs = 0) {
+    return Math.max(RELAX_MIN_MS, Math.min(RELAX_MAX_MS, speechMs + RELAX_TAIL_MS))
+  }
+  let currentMotion = '待机'
+  const REVERSE_MOTION = { 举手: '收手', 掏狗尾草: '收狗尾草', 竖手指: '收手指' } // 脱鞋是换装态，不自动收回
+  let relaxTimer = null, relaxAt = 0, relaxTotal = 0
+  function scheduleRelax(ms = RELAX_MIN_MS) {
+    clearTimeout(relaxTimer)
+    relaxAt = Date.now() + ms
+    relaxTotal = ms
+    relaxTimer = setTimeout(relaxBody, ms)
+    holdGaze(ms) // 头和身体同一时刻交还鼠标，避免「身子松了、头还端着」
+  }
+  window.__relaxState = () => JSON.stringify({ total: relaxTotal, left: Math.max(0, relaxAt - Date.now()), motion: currentMotion, gazeLeft: Math.max(0, gazeHoldUntil - Date.now()) })
+  window.__relaxDelayFor = (ms) => relaxDelayFor(ms)
+  async function relaxBody() {
+    if (!model) return
+    relaxAt = 0; relaxTotal = 0 // 归位后清计时状态，调试钩子读到的 left 归零
+    clearBeats()                // 已经松下来了，还没轮到的句中动作不该再弹出来
+    let played = false
+    if (REVERSE_MOTION[currentMotion]) {
+      try {
+        await model.internalModel.motionManager.startMotion('Motion', MOTION_INDEX[REVERSE_MOTION[currentMotion]], 3)
+        currentMotion = '待机'; played = true
+      } catch {}
+    }
+    try {
+      const em = model.internalModel.motionManager.expressionManager
+      if (em && typeof em.resetExpression === 'function') em.resetExpression()
+    } catch {}
+    clearFaces()  // 神情层：挂着的那张脸也要收（走淡出，不是啪地弹回）
+    setPosture('自然')
+    releaseGaze() // 归位即交还注视：头重新跟着鼠标走
+    P && P.log(played ? '身体松懈：已收动作/表情/姿势回自然状态' : '身体松懈：已收表情/姿势回自然状态')
+  }
+  window.__relaxBody = relaxBody // 调试钩子：手动触发一次松懈
+
+  // ---------- 一键复位：回到「刚启动时」的原始状态 ----------
+  // 面板上的「复位」按钮走这里。为什么不能直接用 relaxBody：
+  //   relaxBody 只管「话说得差不多了就松」，它不动在播的动作库 clip、不管手型开关，
+  //   也不管思考态和说话层。而复位要求「一模一样回到初始」，所以要多收五样：
+  //     ① 动作库 clip（多关节轨道）—— 不清就会停在半抬手；
+  //     ② 手型开关（Movement*/抚胸）—— 只能靠模型自带的「收手」类动作关；
+  //     ③ 表情层 —— resetExpression 清叠加层，不然嘴角还挂着笑；
+  //     ④ 思考态 —— 连三点气泡一起收，否则她「还在想」；
+  //     ⑤ 说话层 —— 停声、清包络与重音弹簧，口型归零。
+  //   物理输入（AngleX/LeanInput…）不用手动清：clip 一停，下一帧就自己归零。
+  function resetToBase() {
+    const stopped = clipPlayers.length
+    clipPlayers.length = 0
+    clearBeats()                                     // 句中动作的排程也一起撤掉
+    gestureZoom = 0                                  // 镜头一起推回上半身
+    clipDrive = {}; clipParam = {}; clipParamAdd = {}
+    clearFaces(true)                                 // 神情层：当场抹掉，不走淡出
+    stopVoice()                                      // 正在念的话也停掉
+    speechFallbackUntil = 0
+    speechRaw = 0
+    SPEECH.w = 0; SPEECH.level = 0; SPEECH.floor = 0
+    SPEECH.onset = 0; SPEECH.onsetV = 0
+    setThinking(false)
+    try {
+      const em = model && model.internalModel.motionManager.expressionManager
+      if (em && typeof em.resetExpression === 'function') em.resetExpression()
+    } catch {}
+    // 手型：先把所有原生动作停掉，再直接写开关归零。
+    // 为什么能这么干（2026-11-06 实测推翻了之前的结论）：
+    //   · 之前「写 Movement* 无效」的前提是**当时有动作在播**——动作每帧重写这个开关，
+    //     所以写完立刻被同帧 model.update() 算回去；
+    //   · 用 motionManager.stopAllMotions() 停干净后再写，参数就定住了（实测写完 1 秒仍为 0）。
+    // 比「播收手动作等它跑完」快得多：收手要 635ms 才归零、残留衰减到 1.9 秒才彻底，
+    // 中途还会跟后面的待机动作互相顶掉（这就是第一版复位后 Movement 仍是 0,1,1 的原因）。
+    try { model.internalModel.motionManager.stopAllMotions() } catch {}
+    try {
+      const cm = model.internalModel.coreModel
+      cm.setParameterValueById('Movement1', 0)
+      cm.setParameterValueById('Movement2', 0)
+      cm.setParameterValueById('Movement3', 0)
+    } catch {}
+    formNow = ''
+    setPosture('自然')
+    releaseGaze()                                    // 头重新跟着鼠标走
+    clearTimeout(relaxTimer); relaxAt = 0; relaxTotal = 0
+    currentMotion = '待机'
+    // 回 IDLE：待机动作不写 Movement*，不会把刚归零的开关又改回去
+    playNativeMotion('待机')
+    hideBubble()
+    P && P.log('已复位到初始状态' + (stopped ? '（打断 ' + stopped + ' 个在播动作）' : ''))
+    return stopped
+  }
+  window.__resetToBase = resetToBase
+  window.__resetState = () => JSON.stringify({
+    form: formNow, motion: currentMotion, posture: postureName,
+    thinking: THINK.on, clips: clipPlayers.length, zoom: gestureZoom,
+  })
+
+  // ---------- 事件接入 ----------
+  let lastSpeak = { text: '', at: 0 } // 兜底去重：同句 3 秒内不重复演
+  async function testMouth() {
+    try {
+      const res = await fetch('/app/renderer/test-tone.wav')
+      const bytes = new Uint8Array(await res.arrayBuffer())
+      await playVoice(bytes)
+      showBubble('口型测试：听我说话的时候，嘴巴会跟着音量开合～', '调试', 5)
+    } catch (e) { P && P.log('口型测试失败：', e.message) }
+  }
+  window.__testMouth = testMouth
+  if (P) {
+    P.onExpression?.((data)=>{clearFaces();poseFace(String(data?.name||''),4);scheduleRelax(RELAX_MIN_MS+2000)})
+    P.onToggleView(() => { window.__setViewMode(viewMode === 'bust' ? 'full' : 'bust') })
+    P.onZoom((v) => { const z = Number(v); if (z >= 0.4 && z <= 2.5) { zoomLevel = z; layout() } })
+    // 常驻外观：面板改了 pet.json，主进程轮询到就推过来。没给值的键保持不动。
+    P.onLook && P.onLook((o) => {
+      if (!o || typeof o !== 'object') return
+      for (const k of LOOK_KEYS) {
+        if (typeof o[k] !== 'number') continue
+        LOOK[k] = LOOK_CONT[k] ? Math.min(1, Math.max(0, o[k])) : (o[k] ? 1 : 0)
+        if (k === 'Clothes2') bodyLevel = LOOK[k] // 交给每帧平滑，不在这里直接 layout
+      }
+      // 面板开着时，外面改了外观（她自己切尾巴/眼镜）也要跟着亮；
+      // 但正在拖滑块时不能重绘 —— 重建 input 会把手指底下的手柄打断
+      if (dressOn && !dressDrag) renderDress()
+    })
+    // 右键菜单的开关。主进程只管发事件，切视图/画面板都在这里做。
+    P.onDress && P.onDress((d) => setDress(!!(d && d.on)))
+    P.onFore && P.onFore((k) => applyFore(k))
+    // 真正的说话处理：抽成具名函数，方便调试钩子跑同一条代码路径（别在测试里另写一份逻辑）
+    async function handleSpeak(d) {
+      // 面板「复位」：不动嘴不出声，只把身体收回初始状态。
+      // 放在去重之前 —— 连点两下复位必须都生效（同一句话 3 秒内会被去重拦掉）。
+      if (d.reset) {
+        lastSpeak = { text: '', at: 0 } // 复位后下句话不被去重误拦
+        resetToBase()
+        return
+      }
+      // 兜底去重：同一句话 3 秒内重复到达就不再演一遍（防上游重复投递）
+      const now = Date.now()
+      if (d.speechId ? d.speechId === lastSpeak.id : d.text && d.text === lastSpeak.text && now - lastSpeak.at < 3000) return
+      lastSpeak = { id:d.speechId, text: d.text || '', at: now }
+      // 面板动作库点播：只演形体，不弹气泡、不出声。演完按动作自身的时长让她自然松开。
+      if (d.preview) {
+        applyBody(d.anim)
+        scheduleRelax(RELAX_MIN_MS + 2000)
+        return
+      }
+      setThinking(false) // 想完了：一开口就退出思考态（宿主侧 thinking 可能还没结束，这里以「说出口」为准）
+      // 「每句一张脸」：新的一句进来先把上一句的脸收掉。
+      // 不清的话，眼睛/眉/嘴/视线/贴片是五个**不同通道**，会一层层往上叠 ——
+      // 连说四句，脸上就同时挂着四张表情（WHALEL2D 那套通道设计本来就能这样共存，
+      // 但那是给「同一句里刻意叠加」用的，跨句叠就成了鬼脸）。走淡出，不是硬切。
+      if (d.text || d.anim) clearFaces()
+      clearBeats()
+      const my = beatSeq, current = () => my === beatSeq
+      const timeline = String(d.anim || '').startsWith('beat:')
+      let playbackError=null
+      const playback = d.audio?.byteLength ? playVoice(d.audio,d).catch(e => {
+        playbackError=e
+        if(current()) { P.reportPlayback?.({speechId:d.speechId,watchVersion:d.watchVersion,watchRequestId:d.watchRequestId,phoneOwner:d.phoneOwner,event:'error',stage:e.stage||'playback',message:String(e.message).slice(0,180)}); voiceSeq++;stopVoice() }
+        P.log('语音播放失败：', e.message);return null
+      }) : Promise.resolve(null)
+      if (timeline) void applyScript(d.anim.slice(5), d, playback, my)
+      const audio = await playback
+      if (!current()) return
+      const duration = audio?.durationMs || estimateSpeechMs(d)
+      if (!audio && d.text && d.speechId && !playbackError) {
+        voiceSeq++;stopVoice()
+        P.reportPlayback?.({speechId:d.speechId,watchVersion:d.watchVersion,watchRequestId:d.watchRequestId,phoneOwner:d.phoneOwner,event:'text-only',text:d.text,audioMs:Math.min(30000,Math.max(1400,duration)),stage:d.synthesisError?'synthesis':'text',message:d.synthesisError||'',startedAt:Date.now()})
+      }
+      if (!timeline) void applyBody(d.anim, duration + 700, duration, current)
+      scheduleRelax(relaxDelayFor(duration))
+      speechFallbackUntil = audio ? 0 : Date.now() + duration
+      if(playbackError)showBubble('播放失败：'+playbackError.message,'音频设备',12)
+      else if (d.text) showBubble(d.text, d.tag, Math.max(8, duration / 1000 + 2))
+    }
+    window.__speak = handleSpeak // 调试钩子：跑真实说话路径（含归位计时）
+    P.onSpeak(handleSpeak)
+    P.onFocus((d) => { if (d.enabled) { hideBubble(); window.petAudio.stop() } })
+    // DSH work 状态：thinking = 在想、working = 在动手干活、result = 刚出结果 —— 这三个都算「忙着」，
+    // 保持同一套姿态（眼神：想事朝上、干活朝下），否则工具链里 states 会 thinking→result→working
+    // 反复跳，每跳一次眨眼闪一下就露馅。只有 waiting/success/error/空闲才真正退出来。
+    P.onThink((d) => {
+      const st = String((d && d.state) || '')
+      if (st === 'result') setThinking(true, 'working') // 出结果那一下按「干活」处理，别突然抬头
+      else if (st === 'thinking' || st === 'working') setThinking(true, st)
+      else setThinking(false)
+    })
+    P.onTestMouth(testMouth)
+    P.onHideBubble(() => { hideBubble(); window.petAudio.stop() })
+  }
+
+  // ---------- 拖拽 ----------
+  let dragging = null
+  stage.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || !P) return
+    P.screenInfo().then((info) => {
+      if (!info) return
+      dragging = { base: { x: info.x, y: info.y }, start: { px: e.screenX, py: e.screenY } }
+      stage.classList.add('dragging')
+      stage.setPointerCapture(e.pointerId)
+    })
+  })
+  stage.addEventListener('pointermove', (e) => {
+    // 视线跟随
+    if (model && !dragging) aimAt(e.clientX, e.clientY)
+    if (!dragging || !P) return
+    P.moveTo(dragging.base.x + (e.screenX - dragging.start.px), dragging.base.y + (e.screenY - dragging.start.py))
+  })
+  const endDrag = () => { dragging = null; stage.classList.remove('dragging') }
+  stage.addEventListener('pointerup', endDrag)
+  stage.addEventListener('pointercancel', endDrag)
+
+  // ---------- 全局光标：窗口外也跟得住 ----------
+  // 渲染页的 mousemove 只在窗口（380×780）范围内有效，鼠标一移出窗口注视就冻在最后的位置，
+  // 这就是「稍微离远一点就不跟踪」的根因。主进程以 30fps 读系统光标位置、换算成相对窗口
+  // 左上角的坐标推过来，于是屏幕任何角落都能被追踪，距离也就能真正换成转动幅度。
+  // （窗口内的 mousemove 仍保留作兜底，两者坐标空间一致，互相覆盖不影响。）
+  if (P && P.onCursor) {
+    window.__cursorHits = 0 // 调试：全局光标收到多少次（>0 说明链路通）
+    window.__freezeCursor = false // 调试：true 时忽略真实光标，方便脚本单独测 aimAt
+    P.onCursor((p) => {
+      window.__cursorHits++
+      window.__lastCursor = p
+      if (window.__freezeCursor) return
+      if (!dragging) aimAt(p.x, p.y)
+    })
+  }
+
+  // ---------- 右键菜单 ----------
+  document.addEventListener('contextmenu', (e) => { e.preventDefault(); P && P.menu() })
+
+  // ---------- 鼠标穿透：readPixels 单点 alpha 命中检测 ----------
+  // 主进程 setIgnoreMouseEvents(true, {forward:true})，渲染页仍收得到 mousemove；
+  // 指到模型/气泡上时恢复交互，透明区域放行点击。canvas 坐标 y 翻转。
+  let hitState = null, lastHitT = 0, lastFocusT = 0
+  document.addEventListener('mousemove', (e) => {
+    if (dragging) return
+    // 穿透态（鼠标在窗口透明区域上）也追踪视线：节流 ~30fps
+    if (model) {
+      const now = performance.now()
+      if (now - lastFocusT > 33) { lastFocusT = now; aimAt(e.clientX, e.clientY) }
+    }
+    let hit = false
+    const el = document.elementFromPoint(e.clientX, e.clientY)
+    // 换衣面板是窗口里的真 DOM，不在 canvas 上，alpha 采样找不到它 ——
+    // 必须显式算命中，否则穿透态下点按钮会直接漏到桌面。
+    // dressDrag 期间无条件命中：拖滑块时鼠标一旦划出面板，alpha 采样会判「空白」
+    // 把窗口切回穿透，手指就丢了手柄。
+    if (dressDrag || (el && (el === bubble || bubble.contains(el) || DRESS_EL.contains(el)))) hit = true
+    else if (model) {
+      const now = performance.now()
+      if (now - lastHitT > 33) { // 节流 30fps
+        lastHitT = now
+        try {
+          const gl = app.renderer.gl
+          const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight
+          const px = new Uint8Array(4)
+          gl.readPixels(Math.floor(e.clientX / innerWidth * w), Math.floor((1 - e.clientY / innerHeight) * h), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px)
+          hit = px[3] > 24
+        } catch {}
+      } else return
+    }
+    if (hit !== hitState) { hitState = hit; P && P.setHit(hit) }
+  })
+
+  // ---------- 调试状态（右键菜单外的存活验证：控制台 window.__toggleStatus()） ----------
+  window.__toggleStatus = () => {
+    statusOn = !statusOn
+    statusEl.style.display = statusOn ? 'block' : 'none'
+    if (statusOn && P) setInterval(async () => {
+      try {
+        const s = await P.pollState()
+        statusEl.textContent =
+          'poll: ' + (s.ok ? 'OK' : 'FAIL ' + s.lastError) +
+          '\nevents: ' + s.events + ' cursor: ' + (s.cursor ?? '-') +
+          '\nmouth: ' + mouthOpen.toFixed(2) + (playing ? ' (speaking)' : '')
+      } catch {}
+    }, 1000)
+  }
+})()
+</script>
+<!-- 耳朵（按住说话）：独立文件、独立作用域，不读写上面任何变量。 -->
+<script src="ear.js"></script>
+<!-- 电话（一直听、自动断句）：同样独立，只通过 window.petAudio 跟本体打两个招呼。 -->
+<script src="call.js"></script>
+<!-- 陪看（抓屏筛帧拼图）：独立文件，只往主进程送图，一个字的正文都不碰。 -->
+<script src="watch.js"></script>
+<!-- 唤醒词（叫「小鱼小鱼」就开始听）：独立文件，自己开一条常驻麦，只和 ear.js 共用上送口。 -->
+<script src="wake.js"></script>
+</body>
+</html>

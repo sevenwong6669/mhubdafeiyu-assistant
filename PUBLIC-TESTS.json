@@ -1,0 +1,28 @@
+{
+  "scope": "isolated-public-smoke-tests",
+  "files": [
+    "independent-runtime.test.mjs",
+    "harness-internal.test.mjs",
+    "internal-onebot.test.mjs",
+    "internal-pet.test.mjs",
+    "internal-asr.test.mjs",
+    "internal-pet-transport.test.mjs",
+    "internal-community.test.mjs",
+    "companion-panel.test.mjs",
+    "isolated-balance-settings.test.mjs",
+    "isolated-startup-recovery.test.mjs",
+    "playback-recovery.test.mjs",
+    "internal-live2d.test.mjs",
+    "driver-startup.test.mjs",
+    "speech-directions.test.mjs",
+    "first-run-setup.test.mjs",
+    "shortcut-bindings-layout.test.mjs",
+    "shortcut-recording.test.mjs",
+    "wallpaper.test.mjs",
+    "wallpaper-recovery.test.mjs",
+    "project-audit-20261116.test.mjs",
+    "qq-connection.test.mjs",
+    "project-startup-resume.test.mjs",
+    "recovery-activity.test.mjs"
+  ]
+}

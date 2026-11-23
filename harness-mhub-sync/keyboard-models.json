@@ -1,0 +1,4 @@
+{
+  "Ace 75 8K": {"vendorId":14391,"productId":12348,"mainKeys":95,"frameBytes":285,"sideStart":95,"sideCount":28,"numberKeys":[11,55,34,14]},
+  "GT 75": {"vendorId":14391,"productId":12333,"mainKeys":99,"frameBytes":384,"minimumFrameBytes":357,"sideStart":99,"sideCount":20,"balanceSideRows":[[0,1,2,3,4,5,6,7,8,9],[19,18,17,16,15,14,13,12,11,10]],"numberKeys":[53,77,60,12]}
+}

@@ -1,0 +1,25 @@
+{
+  "name": "mchose-dafeiyu-live2d",
+  "version": "0.16.0-integrated",
+  "private": true,
+  "type": "commonjs",
+  "main": "app/main.js",
+  "description": "迈从大肥鱼内置完整Live2D桌宠",
+  "scripts": {
+    "start": "electron .",
+    "postinstall": "node node_modules/electron/install.js",
+    "test": "node --test tests/*.test.cjs"
+  },
+  "dependencies": {
+    "electron": "45.3.2",
+    "pixi.js": "7.4.3",
+    "pixi-live2d-display": "0.4.0"
+  },
+  "optionalDependencies": {
+    "sherpa-onnx-node": "2.0.1",
+    "uiohook-napi": "1.5.5"
+  },
+  "overrides": {
+    "gh-pages": "^6.3.0"
+  }
+}
